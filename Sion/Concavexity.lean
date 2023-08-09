@@ -14,9 +14,9 @@ variable {s : Set E} {f : E → β}
 theorem Set.sep_of_subset {α : Type _} {s t : Set α} {p : α → Prop} (hst : s ⊆ t) :
     {x ∈ s | p x} = {x ∈ t | p x} ∩ s := by
   ext x; simp only [mem_sep_iff, mem_inter_iff]
-  rw [and_assoc', and_comm']
+  rw [and_assoc, and_comm]
   simp only [iff_and_self, and_imp]
-  exact fun h h' => hst h'
+  exact fun _ h' => hst h'
 #align set.sep_of_subset Set.sep_of_subset
 
 theorem Convex.quasiconvexOn_restrict {t : Set E} (hf : QuasiconvexOn 𝕜 s f) (hst : t ⊆ s)
@@ -50,8 +50,8 @@ variable {E : Type _} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [Topo
 
 variable {f : E → EReal}
 
-/--
-A quasiconcave and lower semicontinuous function attains its upper bound on a nonempty compact set -/
+/-- A quasiconcave and lower semicontinuous function attains 
+  its upper bound on a nonempty compact set -/
 theorem IsCompact.exists_forall_ge_of_quasiconcave {s : Set E} (ne_s : s.Nonempty)
     (hs : IsCompact s) (hfs : LowerSemicontinuousOn f s) (hfc : QuasiconcaveOn ℝ s f) :
     ∃ a ∈ s, ∀ x ∈ s, f x ≤ f a :=
@@ -71,16 +71,17 @@ theorem BddAboveOn.isCompact_of_quasiconcave {s : Set E} (hs : IsCompact s)
   by
   cases' s.eq_empty_or_nonempty with e_s ne_s
   · rw [e_s]; simp only [Set.image_empty, bddAbove_empty]
-  · obtain ⟨a, ha, hax⟩ := IsCompact.exists_forall_ge_of_quasiconcave ne_s hs hfs hfc
+  · obtain ⟨a, _, hax⟩ := IsCompact.exists_forall_ge_of_quasiconcave ne_s hs hfs hfc
     use f a; rintro t ⟨x, hx, rfl⟩; exact hax x hx
 #align bdd_above_on.is_compact_of_quasiconcave BddAboveOn.isCompact_of_quasiconcave
 
+
 theorem QuasiconcaveOn.isPreconnected_preimage {s : Set E} {t : EReal}
-    (hfc : QuasiconcaveOn ℝ s f) : IsPreconnected (f ∘ coe ⁻¹' Ici t : Set s) :=
+    (hfc : QuasiconcaveOn ℝ s f) : IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Ici t : Set s) :=
   by
-  rw [preimage_comp, ← inducing_coe.is_preconnected_image, image_preimage_eq_inter_range,
+  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
     Subtype.range_coe, inter_comm]
-  exact (hfc t).IsPreconnected
+  exact (hfc t).isPreconnected
 #align quasiconcave_on.is_preconnected_preimage QuasiconcaveOn.isPreconnected_preimage
 
 end Quasiconcave
@@ -111,16 +112,16 @@ theorem BddBelowOn.isCompact_of_quasiconvex {s : Set E} (hs : IsCompact s)
   by
   cases' s.eq_empty_or_nonempty with e_s ne_s
   · rw [e_s]; simp only [Set.image_empty, bddBelow_empty]
-  · obtain ⟨a, ha, hax⟩ := IsCompact.exists_forall_le_of_quasiconvex ne_s hs hfs hfc
+  · obtain ⟨a, _, hax⟩ := IsCompact.exists_forall_le_of_quasiconvex ne_s hs hfs hfc
     use f a; rintro t ⟨x, hx, rfl⟩; exact hax x hx
 #align bdd_below_on.is_compact_of_quasiconvex BddBelowOn.isCompact_of_quasiconvex
 
 theorem QuasiconvexOn.isPreconnected_preimage {s : Set E} {t : EReal} (hfc : QuasiconvexOn ℝ s f) :
-    IsPreconnected (f ∘ coe ⁻¹' Iic t : Set s) :=
+    IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Iic t : Set s) :=
   by
-  rw [preimage_comp, ← inducing_coe.is_preconnected_image, image_preimage_eq_inter_range,
+  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
     Subtype.range_coe, inter_comm]
-  exact (hfc t).IsPreconnected
+  exact (hfc t).isPreconnected
 #align quasiconvex_on.is_preconnected_preimage QuasiconvexOn.isPreconnected_preimage
 
 end Quasiconvex
