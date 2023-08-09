@@ -21,9 +21,9 @@ theorem le_supr₂_iff {α β : Type _} [CompleteLattice β] {f : α → β} {s 
   @infi₂_le_iff α βᵒᵈ _ _ _ _
 #align le_supr₂_iff le_supr₂_iff
 
--- data.real.ereal
+/- -- data.real.ereal
 instance : DenselyOrdered EReal :=
-  WithBot.denselyOrdered
+  WithBot.denselyOrdered -/
 
 -- topology.connected
 -- This is essentially `is_preconnected_iff_subset_of_disjoint_closed`
