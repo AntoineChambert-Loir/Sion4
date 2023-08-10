@@ -567,7 +567,6 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
         rw [and_comm]
 #align ereal_sion.minimax ERealSion.minimax
 
-  
 /-- The Sion-von Neumann minimax theorem (saddle point form) -/
 theorem exists_saddlePointOn :
   ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
@@ -640,6 +639,12 @@ example : BddAbove ((fun y ↦ ⨅ x ∈ X, f x y) '' Y) := by
   apply UpperSemicontinuousOn.bddAbove_of_isCompact kY
   sorry
 
+
+
+example : Monotone (Real.toEReal) := EReal.coe_strictMono.monotone
+
+example : Continuous (Real.toEReal) := by exact continuous_coe_real_ereal
+
 /- Here, one will need compactness on Y — otherwise, no hope that
 the saddle point exists… -/
 /-- The minimax theorem, in the saddle point form -/
@@ -648,27 +653,32 @@ theorem existsSaddlePointOn :
   -- Reduce to the cae of EReal-valued functions
   let φ : E → F → EReal := fun x y ↦ (f x y)
   -- suffices : ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y φ a b
-  obtain ⟨a, ha, b, hb, hab⟩ := ERealSion.exists_saddlePointOn X Y φ
-  use a
-  use ha
-  use b
-  use hb
-  constructor
-  · intro x hx
-    simp only [← EReal.coe_le_coe_iff]
-    exact hab.1 x hx
-  · intro y hy
-    simp only [← EReal.coe_le_coe_iff]
-    exact hab.2 y hy
-  /- the arguments to check…
-  -- case of φ (= EReal-valued functions)
   suffices hφx : ∀ x ∈ X, UpperSemicontinuousOn (fun y ↦ φ x y) Y 
   suffices hφx' : ∀ (x : E), x ∈ X → QuasiconcaveOn ℝ Y fun y ↦ φ x y
   suffices hφy : ∀ (y : F), y ∈ Y → LowerSemicontinuousOn (fun x ↦ φ x y) X
   suffices hφy': ∀ (y : F), y ∈ Y → QuasiconvexOn ℝ X fun x ↦ φ x y
-  let hφ := ERealSion.minimax 
-  
-  sorry -/
+  obtain ⟨a, ha, b, hb, hab⟩ := 
+    ERealSion.exists_saddlePointOn X ne_X cX kX Y ne_Y cY kY φ hφx hφx' hφy hφy'
+  use a
+  use ha
+  use b
+  use hb
+  intro x hx y hy
+  simp only [← EReal.coe_le_coe_iff]
+  exact hab x hx y hy
+  · -- hφy'
+    intro y hy
+    convert (hfy' y hy).monotone_comp EReal.coe_strictMono.monotone
+  · -- hφy
+    intro y hy
+    exact continuous_coe_real_ereal.comp_lowerSemicontinuousOn (hfy y hy) EReal.coe_strictMono.monotone
+  · -- hφx'
+    intro x hx
+    convert (hfx' x hx).monotone_comp EReal.coe_strictMono.monotone
+  · -- hφy'
+    intro x hx
+    exact continuous_coe_real_ereal.comp_upperSemicontinuousOn (hfx x hx) EReal.coe_strictMono.monotone
+
 #align sion.exists_saddle_point Sion.existsSaddlePointOn
 
 -- include ne_X ne_Y cX cY kX
