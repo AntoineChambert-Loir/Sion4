@@ -126,80 +126,47 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     rw [mem_C_iff, Subtype.coe_mk]
     refine' le_trans _ (hinfi_le z hz)
     rw [le_iInf₂_iff]; intro x' hx'; exact hx_le x' hx'
-  have hC_closed : ∀ u, ∀ {z}, z ∈ Y → IsClosed (C u z) :=
-    by
+  have hC_closed : ∀ u, ∀ {z}, z ∈ Y → IsClosed (C u z) :=  by
     intro u z hz 
     specialize hfy z hz
     rw [lowerSemicontinuousOn_iff_restrict] at hfy 
     rw [lowerSemicontinuous_iff_isClosed_preimage] at hfy 
     exact hfy u
-  have hC_preconnected : ∀ u, ∀ {z}, z ∈ Y → IsPreconnected (C u z) :=
-    by
+  have hC_preconnected : ∀ u, ∀ {z}, z ∈ Y → IsPreconnected (C u z) := by
     intro u z hz
     exact (hfy' z hz).isPreconnected_preimage
   have hC_disj : Disjoint (C t' y1) (C t' y2) :=
     by
-    --  from set.disjoint_iff.mpr (λ x hx, not_lt_of_le (infi_le_of_le x $ sup_le_iff.mpr hx) ht'),
-    -- marchait avant que je change en ⨅ x ∈ X……
-    refine' Set.disjoint_iff.mpr fun (x : X) hx => not_lt_of_le (iInf₂_le_of_le (x : E) _ _) ht'
+    refine' Set.disjoint_iff.mpr 
+      fun (x : X) hx => not_lt_of_le (iInf₂_le_of_le (x : E) _ _) ht'
     · exact x.2
     · exact sup_le_iff.mpr hx
-  have hC_subset : ∀ z ∈ segment ℝ y1 y2, C t' z ⊆ C t' y1 ∪ C t' y2 :=
-    by
+  have hC_subset : ∀ z ∈ segment ℝ y1 y2, C t' z ⊆ C t' y1 ∪ C t' y2 := by
     intro z hz x hx
     simp only [Set.mem_union, mem_C_iff, ← inf_le_iff]
     specialize hfx' x x.2 (f x y1 ⊓ f x y2)
     rw [convex_iff_segment_subset] at hfx' 
     specialize hfx' ⟨hy1, inf_le_left⟩ ⟨hy2, inf_le_right⟩ hz
     exact le_trans hfx'.2 hx
-  have hC_subset_or : ∀ z ∈ segment ℝ y1 y2, C t' z ⊆ C t' y1 ∨ C t' z ⊆ C t' y2 :=
-    by
+  have hC_subset_or : 
+    ∀ z ∈ segment ℝ y1 y2, C t' z ⊆ C t' y1 ∨ C t' z ⊆ C t' y2 := by
     intro z hz
-    apply
-      isPreconnected_iff_subset_of_disjoint_closed.mp
-        (hC_preconnected _ (cY.segment_subset hy1 hy2 hz)) _ _ (hC_closed _ hy1) (hC_closed _ hy2)
-        (hC_subset _ hz)
+    apply isPreconnected_iff_subset_of_disjoint_closed.mp
+      (hC_preconnected _ (cY.segment_subset hy1 hy2 hz)) 
+      _ _  (hC_closed _ hy1) (hC_closed _ hy2) (hC_subset _ hz)
     rw [Set.disjoint_iff_inter_eq_empty.mp hC_disj, Set.inter_empty]
-  --have hC_subset_xor : ∀ z ∈ segment ℝ y1 y2, xor (C t' z ⊆ C t' y1) (C t' z ⊆ C t' y2), 
-  --{ sorry },
-  have segment_subset : segment ℝ y1 y2 ⊆ Y := convex_iff_segment_subset.mp cY hy1 hy2
+  /- have segment_subset : segment ℝ y1 y2 ⊆ Y := 
+    convex_iff_segment_subset.mp cY hy1 hy2 -/
   let J1 := {z : segment ℝ y1 y2 | C t z ⊆ C t' y1}
   -- do we really need this ? (I can't do without it)
   have mem_J1_iff : ∀ z : segment ℝ y1 y2, z ∈ J1 ↔ C t z ⊆ C t' y1 := by intro z; rfl
+
   have hJ1_closed : IsClosed J1 := by
     rw [isClosed_iff_clusterPt]
-    -- Let `y` be a cluster point of `J1`, let's show it's in `J1`, i.e `C t y ⊆ C t' y1`.
-    -- Let `x ∈ C t y`, and let's find some `z ∈ J1` such that `x ∈ C t z ⊆ C t' y1`.
-    intro y h x hx
-    replace hfx : UpperSemicontinuous fun y' : segment ℝ y1 y2 => f x y'
-    · rw [← upperSemicontinuousOn_univ_iff]
-      apply (hfx x x.2).comp continuous_subtype_val.continuousOn 
-        (fun y' _ => segment_subset y'.2)
-    suffices : ∃ z ∈ J1, x ∈ C t' (z : F)
-    obtain ⟨z, hz, hxz⟩ := this
-    suffices : C t' z ⊆ C t' y1
-    exact this hxz
-    apply Or.resolve_right (hC_subset_or z z.2)
-    intro hz2
-    apply Set.Nonempty.not_subset_empty (hC_ne z (segment_subset z.2))
-    rw [← disjoint_iff_inter_eq_empty.mp hC_disj]
-    apply Set.subset_inter hz
-    exact subset_trans (hC t t' z (le_of_lt htt')) hz2
-    -- The first goal is to rewrite hfy (lsc of (f ⬝ y)) into an ∀ᶠ form
-    simp only [UpperSemicontinuous, UpperSemicontinuousAt] at hfx 
-    specialize hfx y t' (lt_of_le_of_lt hx htt')
-    rw [clusterPt_principal_iff_frequently] at h 
-    suffices this : ∀ᶠ z : segment ℝ y1 y2 in nhds y, z ∈ J1 → x ∈ C t' z ∧ z ∈ J1
-    obtain ⟨z, hxz, hxz'⟩ := Filter.Frequently.exists (Filter.Frequently.mp h this)
-    exact ⟨z, ⟨hxz', hxz⟩⟩
-    · -- this
-      apply Filter.Eventually.mp hfx
-      apply Filter.eventually_of_forall
-      intro z hzt'
-      rintro hz
-      exact ⟨le_of_lt hzt', hz⟩
-  have hJ1_closed : IsClosed J1 := by
-    rw [isClosed_iff_clusterPt]
+    -- Let `y` be a cluster point of `J1`
+    -- let us show it's in `J1`, i.e `C t y ⊆ C t' y1`.
+    -- Let `x ∈ C t y`
+    -- and let's find some `z ∈ J1` such that `x ∈ C t z ⊆ C t' y1`.
     intro y h x hx
     /- y = lim yn, yn ∈ J1 
        comme x ∈ C t y, on a f x y ≤ t < t', 
@@ -316,92 +283,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
   exact Convex.isPreconnected (convex_segment y1 y2)
 #align ereal_sion.exists_lt_infi_of_lt_infi_of_sup ErealSion.exists_lt_iInf_of_lt_iInf_of_sup
 
-/- lemma exists_lt_infi_of_lt_infi_of_finite {s : set F} (hs : s.finite) {t : ℝ} (ht : (t : ereal) < infi (λ x : X, supr (λ y : s, f x y))) :
-  s ⊆ Y → ∃ y0 ∈ Y,  (t : ereal) < infi (λ x : X, f x y0) :=
-begin
-  revert X, 
---  
---  revert ht,
-  apply hs.induction_on, 
-  { -- empty case 
-    intros X ne_X cX kX hfx hfx' hfy hfy', 
-    haveI : nonempty X := nonempty.coe_sort ne_X,  
-    simp only [csupr_of_empty, cinfi_const, not_lt_bot, is_empty.forall_iff], },
 
-  intros b s has hs hrec X ne_X cX kX hfx hfx' hfy hfy' ht hs'Y, 
-  have hb : b ∈ Y := hs'Y (mem_insert b s), 
-  -- obtain ⟨t' : ereal, htt', ht'_lt_infi_supr⟩ :=  exists_between ht, 
-  let X' := { x ∈ X | f x b ≤ t },
-  cases set.eq_empty_or_nonempty X' with X'_e X'_ne,
-  { -- X' = ∅, 
-    use b, split, apply hs'Y, exact mem_insert b s,
-
-/-    apply lt_of_lt_of_le htt',  
-  rw le_infi_iff,
-    
-    rintro ⟨x, hx⟩,
-    suffices : x ∉ X', 
-    simp only [mem_sep_iff, not_and, not_le] at this,
-    exact le_of_lt (this hx), 
-    rw X'_e, exact not_mem_empty x, -/
-  
-    -- version d'avant, lorsqu'on avait t'=t
-    rw ← not_le,
-    intro h, 
-    rw set.eq_empty_iff_forall_not_mem  at X'_e,
-    
-    obtain ⟨x, hx, hx_le⟩ := lower_semicontinuous.exists_forall_le_of_is_compact ne_X kX (hfy b hb), 
-    specialize X'_e x, 
-    apply X'_e, simp only [set.mem_sep_iff], 
-    apply and.intro hx, 
-    refine le_trans _ h,
-    rw le_infi_iff, 
-    rintro ⟨x, hx⟩, exact hx_le x hx, },
-  
-  suffices kX' : is_compact X',
-  suffices cX' : convex ℝ X', 
-  suffices hX'X : X' ⊆ X, 
-  suffices lt_of : ∀ (f g : E → ereal) (hg : lower_semicontinuous_on g X)
-    (hf_le_g : ∀ x ∈ X, f x ≤ g x), ⨅ x ∈ X', f x  < ⨅ x ∈ X, g x, 
-
-  { 
-    specialize hrec X' X'_ne cX' kX', 
-    obtain ⟨y1, hy1, hty1⟩ := hrec _ _ _ _ _ _,
-    { refine exists_lt_infi_of_lt_infi_of_two X ne_X cX kX Y cY f hfx hfx' hfy hfy' hb hy1 _, 
-
-      suffices : lower_semicontinuous_on (λ x, f x b ⊔ f x y1) X,
-      obtain ⟨a, ha, hfa_le⟩ := lower_semicontinuous.exists_forall_le_of_is_compact ne_X kX this,
-      suffices : infi (λ x : X, f x b ⊔ f x y1) = f a b ⊔ f a y1,
-      rw this,
-      by_cases ha' : a ∈ X',
-      { refine lt_of_lt_of_le hty1 _, 
-        refine le_trans _ (le_sup_right),
-        refine infi_le _ (⟨a, ha'⟩ : X'), },
-      { simp only [mem_sep_iff, not_and, not_le] at ha', 
-        exact lt_of_lt_of_le (ha' ha) (le_sup_left), },
-      
-      { apply le_antisymm, 
-        apply infi_le _ (⟨a, ha⟩ : X),
-        rw le_infi_iff, rintros ⟨x, hx⟩, exact hfa_le x hx, },
-      { apply lower_semicontinuous_on_sup, 
-        exact hfy b hb, exact hfy y1 hy1, }, },
-    { intros x hx', exact hfx x (hX'X hx'), },
-    { intros x hx', exact hfx' x (hX'X hx'), },
-    { intros y hy, apply lower_semicontinuous_on.mono (hfy y hy) hX'X, },
-    { intros y hy, exact cX'.quasiconvex_on_restrict (hfy' y hy) hX'X, },
-    { suffices : lower_semicontinuous_on (λ x, ⨆ y ∈ s, f x y) X',
-      obtain ⟨a, ha, hfa_le⟩:= lower_semicontinuous.exists_infi_of_is_compact X'_ne kX' this,
-
-    sorry,
-    sorry, },
-    { apply subset.trans (subset_insert b s) hs'Y, }, },
-  sorry, -- peut-être à virer
-  { intros x, simp only [mem_sep_iff], exact and.elim_left, },
-
-  { sorry, },
-  { sorry, },
-end
- -/
 theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : EReal}
     (ht : t < ⨅ x ∈ X, ⨆ y ∈ s, f x y) : 
   s ⊆ Y → ∃ y0 ∈ Y, t < ⨅ x ∈ X, f x y0 :=
@@ -410,13 +292,12 @@ theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : ERe
   --  
   refine' Set.Finite.induction_on hs _ _
   · -- empty case
-    intro X ne_X cX kX hfx hfx' hfy hfy'
+    intro X ne_X _ _ _ _ _ _ 
     haveI : Nonempty X := nonempty_coe_sort.mpr ne_X
-    -- intro ht, exfalso,
     simp only [biInf_const ne_X, mem_empty_iff_false, ciSup_false, ciSup_const,
       not_lt_bot, IsEmpty.forall_iff]
   · -- insert case
-    intro b s has hs hrec X ne_X cX kX hfx hfx' hfy hfy' ht hs'Y
+    intro b s _ _ hrec X ne_X _ kX hfx hfx' hfy hfy' ht hs'Y
     have hb : (b ∈ Y) := hs'Y (mem_insert b s)
     -- obtain ⟨t' : ereal, htt', ht'_lt_infi_supr⟩ :=  exists_between ht,
     let X' := {x ∈ X | f x b ≤ t}
@@ -517,11 +398,9 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
     intro t ht
     let X' (y : F) := ({x ∈ X | f x y ≤ t} : Set E)
      
-  -- have hX' : ∀ y, X' y = {x ∈ X | f x y ≤ t}
-    --   suffices kX' : ∀ y ∈ Y, is_compact (X' y),
     suffices hs : ∃ s : Set F, s ⊆ Y ∧ s.Finite ∧ (⨅ y ∈ s, X' y) = ∅
     obtain ⟨s, hsY, hs, hes⟩ := hs
-    suffices hst : t < ⨅ (x : E) (H : x ∈ X), ⨆ (y : F) (H : y ∈ s), f x y
+    suffices hst : t < ⨅ (x ∈ X), ⨆ (y ∈ s), f x y
     obtain ⟨y0, hy0, ht0⟩ :=
       exists_lt_iInf_of_lt_iInf_of_finite X  ne_X cX kX Y cY f hfx hfx' hfy hfy' hs hst hsY
     apply lt_of_lt_of_le ht0
@@ -580,11 +459,6 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
         rw [mem_inter_iff, mem_iInter] at hx
         apply iInf₂_le_of_le x _ _
         exact hx.1
-
-      
-        -- obtain ⟨y, hy⟩ := /-Set.nonempty_def.mp-/ ne_Y
-        -- apply iInf₂_le_of_le y hy
-        
         simp only [iSup_le_iff]
         intro y hy
         suffices : x ∈ X' y
@@ -602,46 +476,8 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
         rw [← hv]
         ext x; simp only [Subtype.coe_mk, mem_sep_iff, mem_inter_iff, mem_preimage, mem_Iic];
         rw [and_comm]
-      
 #align ereal_sion.minimax ErealSion.minimax
 
-
-/- GARBAGE
-
-
-/-       /- rw [Set.nonempty_iff_ne_empty]; intro hY_e
-        apply ht; rw [hY_e]; simp only [mem_empty_iff_false, ciSup_false, ciSup_const] -/
-        obtain ⟨i, hi⟩ := ne_X
-        apply iInf₂_le_of_le i hi
-
-        apply iInf_le_of_le i hi _; exact bot_le
-        rw [iSup₂_le_iff]; exact fun i hi => (hx i hi).2  
-      · suffices eX' : (⨅ y ∈ Y, X' y) = ∅
-        -- eX' : intersection de fermés du compact X est vide
-
-        · simp [Set.eq_empty_iff_forall_not_mem] at eX' 
-          -- rw [Set.eq_empty_iff_forall_not_mem] at eX' ⊢
-          intro x hx
-          simp only [Subtype.coe_mk, mem_inter_iff] at hx 
-          apply eX' x
-          simp only [infi_eq_Inter, mem_Inter]
-          intro y hy
-          rw [← Subtype.coe_mk y hy]
-          rw [(hfyt (⟨y, hy⟩ : Y)).choose_spec.2]
-          apply And.intro _ hx.1
-          apply Inter_subset fun i => Exists.choose (hfyt i)
-          exact hx.2 
-
-      · rintro ⟨y, hy⟩
-        specialize hfy y hy
-        simp_rw [lowerSemicontinuousOn_iff_preimage_Iic] at hfy 
-        obtain ⟨v, v_closed, hv⟩ := hfy t
-        use v; apply And.intro v_closed
-        rw [← hv]
-        ext x; simp only [Subtype.coe_mk, mem_sep_iff, mem_inter_iff, mem_preimage, mem_Iic];
-        rw [and_comm]
--/
--/
 end ErealSion
 
 end EReal
