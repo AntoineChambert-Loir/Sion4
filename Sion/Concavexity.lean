@@ -1,7 +1,7 @@
 import Mathlib.Analysis.Convex.Topology
 import Mathlib.Analysis.Convex.Quasiconvex
 import Mathlib.Topology.Semicontinuous
-import Mathlib.Data.Real.Ereal
+import Mathlib.Data.Real.EReal
 
 open Set
 

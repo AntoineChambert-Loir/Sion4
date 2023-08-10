@@ -1,4 +1,4 @@
-import Mathlib.Data.Real.EReal
+import Mathlib.Data.Real.Ereal
 import Mathlib.Topology.Connected
 
 /-! 
