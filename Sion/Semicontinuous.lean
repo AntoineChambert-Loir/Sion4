@@ -397,6 +397,9 @@ theorem lowerSemicontinuousWithinAt_supr₂ {ι : Type _} {f : ι → α → β}
   simp only [mem_singleton_iff, iSup_iSup_eq_left]
 #align lower_semicontinuous_within_at_supr₂ lowerSemicontinuousWithinAt_supr₂
 
+
+  
+
 theorem lowerSemicontinuousOn_supr₂ {ι : Type _} {f : ι → α → β} {s : Set α} {I : Set ι}
     (hI : I.Finite) (hf : ∀ i ∈ I, LowerSemicontinuousOn (f i) s) :
     LowerSemicontinuousOn (fun x => ⨆ i ∈ I, f i x) s := fun a ha =>
@@ -414,10 +417,10 @@ theorem lowerSemicontinuous_supr₂ {ι : Type _} {f : ι → α → β} {I : Se
 #align lower_semicontinuous_supr₂ lowerSemicontinuous_supr₂
 
 /-- An upper semicontinuous function attains its upper bound on a nonempty compact set -/
-theorem UpperSemicontinuous.exists_iSup_of_isCompact {s : Set α} (ne_s : s.Nonempty)
+theorem UpperSemicontinuousOn.exists_iSup_of_isCompact {s : Set α} (ne_s : s.Nonempty)
     (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) : ∃ a ∈ s, f a = ⨆ x ∈ s, f x := by
   apply LowerSemicontinuousOn.exists_iInf_of_isCompact (β := βᵒᵈ) ne_s hs hf
-#align upper_semicontinuous.exists_supr_of_is_compact UpperSemicontinuous.exists_iSup_of_isCompact
+#align upper_semicontinuous.exists_supr_of_is_compact UpperSemicontinuousOn.exists_iSup_of_isCompact
 
 theorem upperSemicontinuousWithinAt_supr₂ {ι : Type _} {f : ι → α → β} {s : Set α} {a : α}
     {I : Set ι} (hf : ∀ i, UpperSemicontinuousWithinAt (f i) s a) :
@@ -439,6 +442,37 @@ theorem upperSemicontinuous_supr₂ {ι : Type _} {f : ι → α → β} {I : Se
     (hf : ∀ i, UpperSemicontinuous (f i)) : UpperSemicontinuous fun x => ⨅ i ∈ I, f i x :=
   sorry
 #align upper_semicontinuous_supr₂ upperSemicontinuous_supr₂
+
+-- Lemmas which depend on two topologies
+
+theorem lowerSemicontinuousWithinAt_iSup₂ {ι : Type _} {f : ι → α → β} 
+    {s : Set α} {a : α}
+    [TopologicalSpace ι] {I : Set ι} (ne_I : Set.Nonempty I) (hI : IsCompact I) 
+    (hf : ∀ i ∈ I, LowerSemicontinuousWithinAt (f i) s a) 
+    (hf' : UpperSemicontinuousOn (fun i ↦ f i a) I) :
+    LowerSemicontinuousWithinAt (fun x => ⨆ i ∈ I, f i x) s a := by
+  intro t ht
+  dsimp at ht
+  obtain ⟨i, hi, hi'⟩ := hf'.exists_iSup_of_isCompact ne_I hI
+  rw [← hi'] at ht
+  let h := hf i hi t ht
+  dsimp
+  apply Filter.Eventually.mp h
+  apply Filter.eventually_of_forall
+  intro x hx
+  apply lt_of_lt_of_le hx
+  apply le_iSup₂ i hi
+
+theorem upperSemicontinuousWithinAt_iInf₂ {ι : Type _} {f : ι → α → β} 
+    {s : Set α} {a : α}
+    [TopologicalSpace ι] {I : Set ι} (ne_I : Set.Nonempty I) (hI : IsCompact I) 
+    (hf : ∀ i ∈ I, UpperSemicontinuousWithinAt (f i) s a) 
+    (hf' : LowerSemicontinuousOn (fun i ↦ f i a) I) :
+    UpperSemicontinuousWithinAt (fun x => ⨅ i ∈ I, f i x) s a :=
+  lowerSemicontinuousWithinAt_iSup₂ (β := βᵒᵈ) ne_I hI hf hf'
+
+
+
 
 end CompleteLinearOrder
 

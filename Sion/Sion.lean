@@ -58,6 +58,105 @@ by `sorry`ing all the results that we need in the semicontinuous case.
 
 open Set
 
+
+section SaddlePoint
+
+variable {E F : Type _} {β : Type _} 
+variable (X : Set E) (Y : Set F) (f : E → F → β)
+
+/-- The trivial minimax inequality -/
+theorem iSup₂_iInf₂_le_iInf₂_iSup₂ [CompleteLinearOrder β]: 
+  (⨆ y ∈ Y, ⨅ x ∈ X, f x y) ≤ ⨅ x ∈ X, ⨆ y ∈ Y, f x y := by
+  rw [iSup₂_le_iff]; intro y hy
+  rw [le_iInf₂_iff]; intro x hx
+  exact iInf₂_le_of_le x hx (le_iSup₂_of_le y hy (le_refl _))
+#align ereal_sion.supr₂_infi₂_le_infi₂_supr₂ iSup₂_iInf₂_le_iInf₂_iSup₂
+
+-- [Hiriart-Urruty, (4.1.4)]
+/-- The pair (a,b) is a saddle point of f on X × Y 
+  (does not enforce that a ∈ X and b ∈ Y) -/
+def IsSaddlePointOn  [Preorder β] 
+    (a : E) (b : F) :=
+  ∀ x ∈ X, ∀ y ∈ Y, f a y ≤ f x b
+#align is_saddle_point_on IsSaddlePointOn
+
+variable {X Y f}
+-- [Hiriart-Urruty, (4.1.1)]
+lemma isSaddlePointOn_iff [CompleteLinearOrder β] 
+    {a : E} (ha : a ∈ X) {b : F} (hb : b ∈ Y) :
+  IsSaddlePointOn X Y f a b ↔
+  ⨆ y ∈ Y, f a y = f a b ∧  ⨅ x ∈ X, f x b = f a b := by
+  constructor
+  · intro h 
+    dsimp [IsSaddlePointOn] at h
+    constructor 
+    · apply le_antisymm
+      · simp only [iSup_le_iff]
+        exact h a ha
+      · apply le_iSup₂ b hb
+    · apply le_antisymm
+      · apply iInf₂_le a ha
+      · simp only [le_iInf_iff]
+        intro x hx
+        exact h x hx b hb
+  · rintro ⟨h, h'⟩
+    intro x hx y hy
+    suffices : f a y ≤ f a b
+    · apply le_trans this
+      -- f a b ≤ f x b
+      rw [← h']
+      apply iInf₂_le x hx
+    · -- f a y ≤ f a b
+      rw [← h]
+      apply le_iSup₂ y hy
+
+-- [Hiriart-Urruty, Prop. 4.2.2]
+lemma isSaddlePointOn_iff' [CompleteLinearOrder β]
+    {a : E} (ha : a ∈ X) {b : F} (hb : b ∈ Y) :
+  IsSaddlePointOn X Y f a b ↔
+    ((⨆ y ∈ Y, f a y) ≤ (⨅ x ∈ X, f x b)) := by 
+  rw [isSaddlePointOn_iff ha hb]
+  constructor
+  · rintro ⟨h, h'⟩
+    exact le_trans (le_of_eq h) (le_of_eq h'.symm)
+  · intro h
+    constructor
+    · apply le_antisymm
+      · apply le_trans h
+        apply iInf₂_le a ha
+      · apply le_iSup₂ b hb
+    · apply le_antisymm
+      · apply iInf₂_le a ha
+      · apply le_trans _ h
+        apply le_iSup₂ b hb
+
+-- [Hiriart-Urruty, Prop. 4.2.2]
+-- Does the converse hold?
+/-- Minimax formulation of saddle points -/
+lemma isSaddlePointOn_value [CompleteLinearOrder β]
+    {a : E} (ha : a ∈ X) {b : F} (hb : b ∈ Y)
+    (h : IsSaddlePointOn X Y f a b) : 
+  ((⨅ x ∈ X, ⨆ y ∈ Y, f x y = f a b) ∧ (⨆ y ∈ Y, ⨅ x ∈ X, f x y = f a b)) := by 
+  rw [isSaddlePointOn_iff ha hb] at h
+  constructor
+  · apply le_antisymm
+    · rw [← h.1]
+      exact le_trans (iInf₂_le a ha) (le_rfl)
+    · rw [← h.2]
+      apply iInf₂_mono
+      intro x _
+      apply le_iSup₂ b hb
+  · apply le_antisymm
+    · rw [← h.1]
+      apply iSup₂_mono
+      intro y _
+      apply iInf₂_le a ha
+    · rw [← h.2]
+      apply le_trans (le_rfl) (le_iSup₂ b hb)
+  
+
+end SaddlePoint
+
 variable {E : Type _} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [TopologicalAddGroup E]
   [ContinuousSMul ℝ E]
 
@@ -66,26 +165,20 @@ variable {F : Type _} [AddCommGroup F] [Module ℝ F] [TopologicalSpace F] [Topo
 
 variable (X : Set E) (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
 
-variable (Y : Set F) (ne_Y : Y.Nonempty) (cY : Convex ℝ Y)
-
-def IsSaddlePointOn {β : Type _} [Preorder β] (f : E → F → β) {a : E} (_ : a ∈ X) {b : F}
-    (_ : b ∈ Y) :=
-  (∀ x ∈ X, f a b ≤ f x b) ∧ ∀ y ∈ Y, f a y ≤ f a b
-#align is_saddle_point_on IsSaddlePointOn
+variable (Y : Set F) (ne_Y : Y.Nonempty) (cY : Convex ℝ Y) (kY : IsCompact Y)
 
 section EReal
 
-namespace ErealSion
+namespace ERealSion
 
-variable (f : E → F → EReal)
+variable (f : E → F → EReal) 
+  
+  -- [CompleteLinearOrderedAddCommMonoid β] [OrderedAddCommMonoid β] [DenselyOrdered β]
+  
 
-/-- The trivial minimax inequality -/
-theorem supr₂_infi₂_le_infi₂_supr₂ : (⨆ y ∈ Y, ⨅ x ∈ X, f x y) ≤ ⨅ x ∈ X, ⨆ y ∈ Y, f x y :=
-  by
-  rw [iSup₂_le_iff]; intro y hy
-  rw [le_iInf₂_iff]; intro x hx
-  exact iInf₂_le_of_le x hx (le_iSup₂_of_le y hy (le_refl _))
-#align ereal_sion.supr₂_infi₂_le_infi₂_supr₂ ErealSion.supr₂_infi₂_le_infi₂_supr₂
+
+
+-- has to be removed from the definition of Quasiconcave / Quasiconvex
 
 variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
   (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
@@ -93,23 +186,19 @@ variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
 variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
   (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
 
--- Question pour Antoine : Y-a-t-il une raison pour utiliser `⨅ (x : X), foo x` au lieu de `⨅ x ∈ X, foo x`
--- (le deuxième évite des coercions) ? Dans `ℝ` ce sera important de faire la distinction parce 
--- que ça ne donne pas le même résultat (`⨅ x ∈ X, foo x` devient `⨅ (x : E), ⨅ (hx : x ∈ X), foo x` et
--- l'inf sur l'ensemble vide ne donne rien sur `ℝ`), mais autant profiter à fond de `ereal`, non ?
--- Réponse : a priori, aucune, je ne sais même pas pourquoi j'entre l'une et pas l'autre. 
--- Question : quelle est la différence dans ℝ ?
--- (à part que l'inf sur l'ensemble vide est alors 0 et pas + infini !)
----- TODO: trouver un meilleur nom :)
----- penser `p := C t z ⊆ A`, `p' := C t' z ⊆ A`, `q := C t z ⊆ B`, `q' := C t' z ⊆ B`
---lemma logic_lemma {p p' q q' : Prop} (hp : p' → p) (hq : q' → q) (h : xor p' q')
 theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : EReal}
     (ht : t < ⨅ x ∈ X, f x y1 ⊔ f x y2) : ∃ y0 ∈ Y, t < ⨅ x ∈ X, f x y0 :=
   by
   by_contra' hinfi_le
-  obtain ⟨t' : EReal, htt' : t < t', ht' : t' < ⨅ x ∈ X, f x y1 ⊔ f x y2⟩ := exists_between ht
+  obtain ⟨t', htt', ht'⟩ := 
+  -- : t < t', ht' : t' < ⨅ x ∈ X, f x y1 ⊔ f x y2⟩ := 
+    exists_between ht
   let C : EReal → F → Set X := 
     fun u z => (fun x => f x z) ∘ (fun x ↦ ↑x)⁻¹' Iic u
+  have C_eq : ∀ (u : EReal) (z : F), 
+    C u z = (fun x ↦ f x z) ∘ (fun (x : X) ↦ ↑x) ⁻¹' (Iic u) := by
+    intro u z
+    rfl
   have mem_C_iff : ∀ (u z) (x : X), x ∈ C u z ↔ f x z ≤ u := by 
     intro u z x; rfl
   have hC : ∀ u v z, u ≤ v → C u z ⊆ C v z :=
@@ -134,6 +223,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     exact hfy u
   have hC_preconnected : ∀ u, ∀ {z}, z ∈ Y → IsPreconnected (C u z) := by
     intro u z hz
+    rw [C_eq]
     exact (hfy' z hz).isPreconnected_preimage
   have hC_disj : Disjoint (C t' y1) (C t' y2) :=
     by
@@ -281,8 +371,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
   rw [← inducing_subtype_val.isPreconnected_image]
   simp only [image_univ, Subtype.range_coe_subtype, setOf_mem_eq]
   exact Convex.isPreconnected (convex_segment y1 y2)
-#align ereal_sion.exists_lt_infi_of_lt_infi_of_sup ErealSion.exists_lt_iInf_of_lt_iInf_of_sup
-
+#align ereal_sion.exists_lt_infi_of_lt_infi_of_sup ERealSion.exists_lt_iInf_of_lt_iInf_of_sup
 
 theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : EReal}
     (ht : t < ⨅ x ∈ X, ⨆ y ∈ s, f x y) : 
@@ -383,7 +472,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : ERe
 
     · -- X' ⊆ X 
       intro x; simp only [mem_sep_iff]; exact And.left
-#align ereal_sion.exists_lt_infi_of_lt_infi_of_finite ErealSion.exists_lt_iInf_of_lt_iInf_of_finite
+#align ereal_sion.exists_lt_infi_of_lt_infi_of_finite ERealSion.exists_lt_iInf_of_lt_iInf_of_finite
 
 example {a b : ℝ} : a ≤ b ↔ ∀ c : ℝ, c < a → c < b :=
   forall_lt_iff_le.symm
@@ -392,7 +481,7 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
   apply symm
   apply le_antisymm
   -- the obvious inclusion
-  · exact supr₂_infi₂_le_infi₂_supr₂ X Y f
+  · exact iSup₂_iInf₂_le_iInf₂_iSup₂ X Y f
   -- the delicate inclusion
   · rw [← forall_lt_iff_le]
     intro t ht
@@ -402,7 +491,7 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
     obtain ⟨s, hsY, hs, hes⟩ := hs
     suffices hst : t < ⨅ (x ∈ X), ⨆ (y ∈ s), f x y
     obtain ⟨y0, hy0, ht0⟩ :=
-      exists_lt_iInf_of_lt_iInf_of_finite X  ne_X cX kX Y cY f hfx hfx' hfy hfy' hs hst hsY
+      exists_lt_iInf_of_lt_iInf_of_finite X ne_X cX kX Y cY f hfx hfx' hfy hfy' hs hst hsY
     apply lt_of_lt_of_le ht0
     apply le_iSup₂_of_le y0 hy0 (le_refl _)
     · -- hst
@@ -476,9 +565,35 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
         rw [← hv]
         ext x; simp only [Subtype.coe_mk, mem_sep_iff, mem_inter_iff, mem_preimage, mem_Iic];
         rw [and_comm]
-#align ereal_sion.minimax ErealSion.minimax
+#align ereal_sion.minimax ERealSion.minimax
 
-end ErealSion
+  
+/-- The Sion-von Neumann minimax theorem (saddle point form) -/
+theorem exists_saddlePointOn :
+  ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
+  suffices hlsc : LowerSemicontinuousOn (fun x => ⨆ y ∈ Y, f x y) X
+  obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
+  use a
+  use ha
+  suffices husc : UpperSemicontinuousOn (fun y => ⨅ x ∈ X, f x y) Y
+  obtain ⟨b, hb, hb'⟩ := UpperSemicontinuousOn.exists_iSup_of_isCompact ne_Y kY husc
+  use b 
+  use hb
+  rw [isSaddlePointOn_iff' ha hb]
+  rw [ha']
+  rw [minimax X ne_X cX kX Y cY f hfx hfx' hfy hfy']
+  rw [← hb']
+  · -- hlsc
+    intro y hy
+    apply upperSemicontinuousWithinAt_iInf₂ ne_X kX _ (hfy y hy)
+    intro x hx; exact hfx x hx y hy
+  · -- husc
+    intro x hx
+    apply lowerSemicontinuousWithinAt_iSup₂ ne_Y kY _ (hfx x hx)
+    intro y hy; exact hfy y hy x hx
+
+
+end ERealSion
 
 end EReal
 
@@ -511,27 +626,59 @@ consisting of x such that (λ y, f x y) is bounded above.
 but 0 for Lean… what about the rhs?)
 
 -/
-theorem minimax :
-    (iInf fun x : X => iSup fun y : Y => f x y) = iSup fun y : Y => iInf fun x : X => f x y :=
+
+example {x : E} (hx : x ∈ X) : BddAbove ((fun y ↦ f x y) '' Y) :=
+  (hfx x hx).bddAbove_of_isCompact kY
+
+example : BddBelow ((fun x ↦ ⨆ y ∈ Y, f x y) '' X) := by
   sorry
-#align sion.minimax Sion.minimax
+
+example {y : F} (hy : y ∈ Y) : BddBelow ((fun x ↦ f x y) '' X) := by
+  sorry
+
+example : BddAbove ((fun y ↦ ⨅ x ∈ X, f x y) '' Y) := by 
+  apply UpperSemicontinuousOn.bddAbove_of_isCompact kY
+  sorry
 
 /- Here, one will need compactness on Y — otherwise, no hope that
 the saddle point exists… -/
 /-- The minimax theorem, in the saddle point form -/
-theorem exists_saddle_point :
-    ∃ (a : E) (ha : a ∈ X) (b : F) (hb : b ∈ Y), IsSaddlePointOn X Y f ha hb :=
-  sorry
-#align sion.exists_saddle_point Sion.exists_saddle_point
+theorem existsSaddlePointOn :
+  ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
+  -- Reduce to the cae of EReal-valued functions
+  let φ : E → F → EReal := fun x y ↦ (f x y)
+  -- suffices : ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y φ a b
+  obtain ⟨a, ha, b, hb, hab⟩ := ERealSion.exists_saddlePointOn X Y φ
+  use a
+  use ha
+  use b
+  use hb
+  constructor
+  · intro x hx
+    simp only [← EReal.coe_le_coe_iff]
+    exact hab.1 x hx
+  · intro y hy
+    simp only [← EReal.coe_le_coe_iff]
+    exact hab.2 y hy
+  /- the arguments to check…
+  -- case of φ (= EReal-valued functions)
+  suffices hφx : ∀ x ∈ X, UpperSemicontinuousOn (fun y ↦ φ x y) Y 
+  suffices hφx' : ∀ (x : E), x ∈ X → QuasiconcaveOn ℝ Y fun y ↦ φ x y
+  suffices hφy : ∀ (y : F), y ∈ Y → LowerSemicontinuousOn (fun x ↦ φ x y) X
+  suffices hφy': ∀ (y : F), y ∈ Y → QuasiconvexOn ℝ X fun x ↦ φ x y
+  let hφ := ERealSion.minimax 
+  
+  sorry -/
+#align sion.exists_saddle_point Sion.existsSaddlePointOn
 
 -- include ne_X ne_Y cX cY kX
 /- There are some `sorry` 
 *  we need to add the proofs that relevant functions are bounded on X Y 
 * We also need to add the proofs that forall `infi` and `supr` appearing in the statement, the corresponding function is indeed bounded from below / from above -/
 /-- The minimax theorem, in the inf-sup equals sup-inf form -/
-theorem minimax' :
-    (iInf fun x : X => iSup fun y : Y => f x y) = iSup fun y : Y => iInf fun x : X => f x y :=
-  by
+
+theorem minimax :
+    ⨅ x ∈ X, ⨆ y ∈ Y, f x y = ⨆ y ∈ Y, ⨅ x ∈ X, f x y :=  by
   haveI : Nonempty X := ne_X.coe_sort
   haveI : Nonempty Y := ne_Y.coe_sort
   /- 

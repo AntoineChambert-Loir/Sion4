@@ -48,7 +48,8 @@ Maybe the result is false, I don't know.
 variable {E : Type _} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [TopologicalAddGroup E]
   [ContinuousSMul ℝ E]
 
-variable {f : E → EReal}
+variable {β : Type _} [OrderedAddCommMonoid β]
+variable {f : E → β}
 
 /-- A quasiconcave and lower semicontinuous function attains 
   its upper bound on a nonempty compact set -/
@@ -76,7 +77,7 @@ theorem BddAboveOn.isCompact_of_quasiconcave {s : Set E} (hs : IsCompact s)
 #align bdd_above_on.is_compact_of_quasiconcave BddAboveOn.isCompact_of_quasiconcave
 
 
-theorem QuasiconcaveOn.isPreconnected_preimage {s : Set E} {t : EReal}
+theorem QuasiconcaveOn.isPreconnected_preimage {s : Set E} {t : β}
     (hfc : QuasiconcaveOn ℝ s f) : IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Ici t : Set s) :=
   by
   rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
@@ -97,7 +98,8 @@ Maybe the result is false, I don't know.
 variable {E : Type _} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [TopologicalAddGroup E]
   [ContinuousSMul ℝ E]
 
-variable {f : E → EReal}
+
+variable {β : Type _} [OrderedAddCommMonoid β] {f : E → β}
 
 /--
 A quasiconvex and upper semicontinuous function attains its lower bound on a nonempty compact set -/
@@ -116,7 +118,7 @@ theorem BddBelowOn.isCompact_of_quasiconvex {s : Set E} (hs : IsCompact s)
     use f a; rintro t ⟨x, hx, rfl⟩; exact hax x hx
 #align bdd_below_on.is_compact_of_quasiconvex BddBelowOn.isCompact_of_quasiconvex
 
-theorem QuasiconvexOn.isPreconnected_preimage {s : Set E} {t : EReal} (hfc : QuasiconvexOn ℝ s f) :
+theorem QuasiconvexOn.isPreconnected_preimage {s : Set E} {t : β} (hfc : QuasiconvexOn ℝ s f) :
     IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Iic t : Set s) :=
   by
   rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
