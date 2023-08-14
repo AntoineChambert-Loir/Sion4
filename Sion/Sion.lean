@@ -488,7 +488,7 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
     obtain ⟨s, hsY, hs, hes⟩ := hs
     suffices hst : t < ⨅ (x ∈ X), ⨆ (y ∈ s), f x y
     obtain ⟨y0, hy0, ht0⟩ :=
-      exists_lt_iInf_of_lt_iInf_of_finite X ne_X cX kX Y f hfx hfx' hfy hfy' hs hst hsY
+      exists_lt_iInf_of_lt_iInf_of_finite X ne_X cX kX Y cY f hfx hfx' hfy hfy' hs hst hsY
     apply lt_of_lt_of_le ht0
     apply le_iSup₂_of_le y0 hy0 (le_refl _)
     · -- hst
@@ -577,7 +577,7 @@ theorem exists_saddlePointOn :
   use hb
   rw [isSaddlePointOn_iff' ha hb]
   rw [ha']
-  rw [minimax X ne_X cX kX Y f hfx hfx' hfy hfy']
+  rw [minimax X ne_X cX kX Y cY f hfx hfx' hfy hfy']
   rw [← hb']
   · -- hlsc
     intro y hy
@@ -643,7 +643,7 @@ theorem existsSaddlePointOn :
   suffices hφy : ∀ (y : F), y ∈ Y → LowerSemicontinuousOn (fun x ↦ φ x y) X
   suffices hφy': ∀ (y : F), y ∈ Y → QuasiconvexOn ℝ X fun x ↦ φ x y
   obtain ⟨a, ha, b, hb, hab⟩ := 
-    ERealSion.exists_saddlePointOn X ne_X cX kX Y ne_Y kY φ hφx hφx' hφy hφy'
+    ERealSion.exists_saddlePointOn X ne_X cX kX Y ne_Y cY kY φ hφx hφx' hφy hφy'
   use a
   use ha
   use b

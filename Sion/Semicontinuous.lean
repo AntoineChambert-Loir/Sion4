@@ -3,11 +3,15 @@ import Mathlib.Topology.Order.LowerUpperTopology
 
 section Semicontinuity
 
-/- 
+/-! 
 
-- `LowerSemicontinuous.is_compact.exists_forall_le` : We prove that lower semicontinuous functions attain their lower bound on a nonempty compact set.
+- `LowerSemicontinuous.is_compact.exists_forall_le` : 
+  We prove that lower semicontinuous functions attain their lower bound 
+  on a nonempty compact set.
 
-- `LowerSemicontinuous.bdd_below_on.is_compact` : As a consequence, a lower semicontinuous function on a compact set is bounded below. 
+- `LowerSemicontinuous.bdd_below_on.is_compact` : 
+  As a consequence, a lower semicontinuous function 
+  on a compact set is bounded below. 
 
 We then prove the opposite results for upper semicontinuous functions :
 
@@ -477,6 +481,8 @@ theorem upperSemicontinuousWithinAt_iInf₂ {ι : Type _} {f : ι → α → β}
 end CompleteLinearOrder
 
 end Semicontinuity
+
+#exit
 
 section Junk
 

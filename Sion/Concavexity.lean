@@ -1,16 +1,15 @@
 import Mathlib.Analysis.Convex.Topology
 import Mathlib.Analysis.Convex.Quasiconvex
 import Mathlib.Topology.Semicontinuous
-import Mathlib.Data.Real.EReal
+-- import Mathlib.Data.Real.EReal
 
 open Set
 
 section Composition
 
-variable {𝕜 E β γ : Type _} [OrderedSemiring 𝕜] [AddCommMonoid E]  [SMul 𝕜 E]
+variable {𝕜 E β : Type*} [OrderedSemiring 𝕜] [AddCommMonoid E]  [SMul 𝕜 E]
 
-
-variable [LinearOrderedAddCommMonoid β] [OrderedAddCommMonoid γ]
+variable {β γ : Type*} [LinearOrder β] [Preorder γ]
 
 variable {s : Set E} {f : E → β} {g : β → γ}
 
@@ -57,8 +56,8 @@ end Composition
 
 section Restriction
 
-variable {𝕜 E β : Type _} [OrderedSemiring 𝕜] [AddCommMonoid E] [OrderedAddCommMonoid β] [SMul 𝕜 E]
-
+variable {𝕜 E : Type _} [OrderedSemiring 𝕜] [AddCommMonoid E] [SMul 𝕜 E]
+variable {β : Type _} [Preorder β]
 variable {s : Set E} {f : E → β}
 
 theorem Set.sep_of_subset {α : Type _} {s t : Set α} {p : α → Prop} (hst : s ⊆ t) :
@@ -89,6 +88,7 @@ end Restriction
 
 section Quasiconcave
 
+
 /- We prove that a lsc quasiconcave function on a nonempty compact convex set 
 is bounded above and attains its upper bound. 
 
@@ -98,8 +98,31 @@ Maybe the result is false, I don't know.
 variable {E : Type _} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [TopologicalAddGroup E]
   [ContinuousSMul ℝ E]
 
-variable {β : Type _} [OrderedAddCommMonoid β]
+variable {β : Type _} [Preorder β]
 variable {f : E → β}
+
+
+theorem QuasiconcaveOn.isPreconnected_preimage {s : Set E} {t : β}
+    (hfc : QuasiconcaveOn ℝ s f) : 
+    IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Ici t : Set s) := by
+  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
+    Subtype.range_coe, inter_comm]
+  exact (hfc t).isPreconnected
+#align quasiconcave_on.is_preconnected_preimage 
+  QuasiconcaveOn.isPreconnected_preimage
+
+theorem QuasiconvexOn.isPreconnected_preimage {s : Set E} {t : β} 
+    (hfc : QuasiconvexOn ℝ s f) :
+    IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Iic t : Set s) := by
+  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
+    Subtype.range_coe, inter_comm]
+  exact (hfc t).isPreconnected
+#align quasiconvex_on.is_preconnected_preimage 
+  QuasiconvexOn.isPreconnected_preimage
+
+#exit
+
+-- La suite est peut-être fausse et est de toutes façons inutile
 
 /-- A quasiconcave and lower semicontinuous function attains 
   its upper bound on a nonempty compact set -/
@@ -127,13 +150,6 @@ theorem BddAboveOn.isCompact_of_quasiconcave {s : Set E} (hs : IsCompact s)
 #align bdd_above_on.is_compact_of_quasiconcave BddAboveOn.isCompact_of_quasiconcave
 
 
-theorem QuasiconcaveOn.isPreconnected_preimage {s : Set E} {t : β}
-    (hfc : QuasiconcaveOn ℝ s f) : IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Ici t : Set s) :=
-  by
-  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
-    Subtype.range_coe, inter_comm]
-  exact (hfc t).isPreconnected
-#align quasiconcave_on.is_preconnected_preimage QuasiconcaveOn.isPreconnected_preimage
 
 end Quasiconcave
 
@@ -168,13 +184,6 @@ theorem BddBelowOn.isCompact_of_quasiconvex {s : Set E} (hs : IsCompact s)
     use f a; rintro t ⟨x, hx, rfl⟩; exact hax x hx
 #align bdd_below_on.is_compact_of_quasiconvex BddBelowOn.isCompact_of_quasiconvex
 
-theorem QuasiconvexOn.isPreconnected_preimage {s : Set E} {t : β} (hfc : QuasiconvexOn ℝ s f) :
-    IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Iic t : Set s) :=
-  by
-  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
-    Subtype.range_coe, inter_comm]
-  exact (hfc t).isPreconnected
-#align quasiconvex_on.is_preconnected_preimage QuasiconvexOn.isPreconnected_preimage
 
 end Quasiconvex
 
