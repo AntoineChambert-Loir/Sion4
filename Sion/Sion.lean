@@ -171,13 +171,10 @@ section EReal
 
 namespace ERealSion
 
-variable (f : E → F → EReal) 
+variable (f : E → F → β) [CompleteLinearOrder β] [DenselyOrdered β]
   
   -- [CompleteLinearOrderedAddCommMonoid β] [OrderedAddCommMonoid β] [DenselyOrdered β]
   
-
-
-
 -- has to be removed from the definition of Quasiconcave / Quasiconvex
 
 variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
@@ -186,16 +183,16 @@ variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
 variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
   (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
 
-theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : EReal}
+theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : β}
     (ht : t < ⨅ x ∈ X, f x y1 ⊔ f x y2) : ∃ y0 ∈ Y, t < ⨅ x ∈ X, f x y0 :=
   by
   by_contra' hinfi_le
   obtain ⟨t', htt', ht'⟩ := 
   -- : t < t', ht' : t' < ⨅ x ∈ X, f x y1 ⊔ f x y2⟩ := 
     exists_between ht
-  let C : EReal → F → Set X := 
+  let C : β → F → Set X := 
     fun u z => (fun x => f x z) ∘ (fun x ↦ ↑x)⁻¹' Iic u
-  have C_eq : ∀ (u : EReal) (z : F), 
+  have C_eq : ∀ (u : β) (z : F), 
     C u z = (fun x ↦ f x z) ∘ (fun (x : X) ↦ ↑x) ⁻¹' (Iic u) := by
     intro u z
     rfl
@@ -373,7 +370,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
   exact Convex.isPreconnected (convex_segment y1 y2)
 #align ereal_sion.exists_lt_infi_of_lt_infi_of_sup ERealSion.exists_lt_iInf_of_lt_iInf_of_sup
 
-theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : EReal}
+theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : β}
     (ht : t < ⨅ x ∈ X, ⨆ y ∈ s, f x y) : 
   s ⊆ Y → ∃ y0 ∈ Y, t < ⨅ x ∈ X, f x y0 :=
   by
@@ -491,7 +488,7 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
     obtain ⟨s, hsY, hs, hes⟩ := hs
     suffices hst : t < ⨅ (x ∈ X), ⨆ (y ∈ s), f x y
     obtain ⟨y0, hy0, ht0⟩ :=
-      exists_lt_iInf_of_lt_iInf_of_finite X ne_X cX kX Y cY f hfx hfx' hfy hfy' hs hst hsY
+      exists_lt_iInf_of_lt_iInf_of_finite X ne_X cX kX Y f hfx hfx' hfy hfy' hs hst hsY
     apply lt_of_lt_of_le ht0
     apply le_iSup₂_of_le y0 hy0 (le_refl _)
     · -- hst
@@ -580,7 +577,7 @@ theorem exists_saddlePointOn :
   use hb
   rw [isSaddlePointOn_iff' ha hb]
   rw [ha']
-  rw [minimax X ne_X cX kX Y cY f hfx hfx' hfy hfy']
+  rw [minimax X ne_X cX kX Y f hfx hfx' hfy hfy']
   rw [← hb']
   · -- hlsc
     intro y hy
@@ -626,20 +623,8 @@ but 0 for Lean… what about the rhs?)
 
 -/
 
-example {x : E} (hx : x ∈ X) : BddAbove ((fun y ↦ f x y) '' Y) :=
-  (hfx x hx).bddAbove_of_isCompact kY
-
-example : BddBelow ((fun x ↦ ⨆ y ∈ Y, f x y) '' X) := by
-  sorry
-
-example {y : F} (hy : y ∈ Y) : BddBelow ((fun x ↦ f x y) '' X) := by
-  sorry
-
-example : BddAbove ((fun y ↦ ⨅ x ∈ X, f x y) '' Y) := by 
-  apply UpperSemicontinuousOn.bddAbove_of_isCompact kY
-  sorry
-
-
+-- TODO : start from a LinearOrder, DenselyOrdered and add with_top, with_bot
+-- Problem : not Densely Ordered if it has min or sup…
 
 example : Monotone (Real.toEReal) := EReal.coe_strictMono.monotone
 
@@ -658,7 +643,7 @@ theorem existsSaddlePointOn :
   suffices hφy : ∀ (y : F), y ∈ Y → LowerSemicontinuousOn (fun x ↦ φ x y) X
   suffices hφy': ∀ (y : F), y ∈ Y → QuasiconvexOn ℝ X fun x ↦ φ x y
   obtain ⟨a, ha, b, hb, hab⟩ := 
-    ERealSion.exists_saddlePointOn X ne_X cX kX Y ne_Y cY kY φ hφx hφx' hφy hφy'
+    ERealSion.exists_saddlePointOn X ne_X cX kX Y ne_Y kY φ hφx hφx' hφy hφy'
   use a
   use ha
   use b
@@ -679,52 +664,6 @@ theorem existsSaddlePointOn :
     intro x hx
     exact continuous_coe_real_ereal.comp_upperSemicontinuousOn (hfx x hx) EReal.coe_strictMono.monotone
 
-#align sion.exists_saddle_point Sion.existsSaddlePointOn
-
--- include ne_X ne_Y cX cY kX
-/- There are some `sorry` 
-*  we need to add the proofs that relevant functions are bounded on X Y 
-* We also need to add the proofs that forall `infi` and `supr` appearing in the statement, the corresponding function is indeed bounded from below / from above -/
-/-- The minimax theorem, in the inf-sup equals sup-inf form -/
-
-theorem minimax :
-    ⨅ x ∈ X, ⨆ y ∈ Y, f x y = ⨆ y ∈ Y, ⨅ x ∈ X, f x y :=  by
-  haveI : Nonempty X := ne_X.coe_sort
-  haveI : Nonempty Y := ne_Y.coe_sort
-  /- 
-    obtain ⟨m, hm⟩ := sion.is_bdd_below X ne_X cX kX Y ne_Y cY f hfx hfx' hfy hfy',
-    obtain ⟨M, hM⟩ := sion.is_bdd_above X ne_X cX kX Y ne_Y cY f hfx hfx' hfy hfy',
-    simp only [lower_bounds, upper_bounds, set.mem_range, prod.exists, set_coe.exists, subtype.coe_mk, exists_prop,
-    forall_exists_index, and_imp, set.mem_set_of_eq] at hm hM,
-    -/
-  apply le_antisymm
-  · obtain ⟨a, ha, b, hb, hax, hby⟩ :=
-      Sion.exists_saddle_point X ne_X cX kX Y ne_Y cY f hfx hfx' hfy hfy'
-    suffices : f a b ≤ iSup fun y : Y => iInf fun x : X => f x y
-    apply le_trans _ this
-    refine' le_trans (ciInf_le _ (⟨a, ha⟩ : X)) _
-    -- bdd_below is not automatic :-(
-    sorry
-    apply ciSup_le
-    rintro ⟨y, hy⟩; exact hby y hy
-    · refine' le_trans _ (le_ciSup _ (⟨b, hb⟩ : Y))
-      apply le_ciInf
-      rintro ⟨x, hx⟩; exact hax x hx
-      -- bdd_above is not automatic :-(
-      sorry
-  · -- This is the trivial inequality
-    -- except that we need to check that some stuff is bounded
-    apply ciSup_le; rintro ⟨y, hy⟩
-    apply le_ciInf; rintro ⟨x, hx⟩
-    refine' le_trans (ciInf_le _ (⟨x, hx⟩ : X)) _
-    sorry
-    -- bdd_below is not automatic
-    --    rw subtype.coe_mk,
-    refine' @le_ciSup _ _ _ (fun t : Y => f x t) _ (⟨y, hy⟩ : Y)
-    sorry
-#align sion.minimax' Sion.minimax'
-
--- bdd_above is not automatic
 end Sion
 
 end Real
