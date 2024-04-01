@@ -75,8 +75,7 @@ theorem iSup₂_iInf₂_le_iInf₂_iSup₂ [CompleteLinearOrder β]:
 -- [Hiriart-Urruty, (4.1.4)]
 /-- The pair (a,b) is a saddle point of f on X × Y
   (does not enforce that a ∈ X and b ∈ Y) -/
-def IsSaddlePointOn  [Preorder β]
-    (a : E) (b : F) :=
+def IsSaddlePointOn  [Preorder β] (a : E) (b : F) :=
   ∀ x ∈ X, ∀ y ∈ Y, f a y ≤ f x b
 #align is_saddle_point_on IsSaddlePointOn
 
@@ -187,19 +186,10 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     (ht : t < ⨅ x ∈ X, f x y1 ⊔ f x y2) : ∃ y0 ∈ Y, t < ⨅ x ∈ X, f x y0 := by
   by_contra hinfi_le
   obtain ⟨t', htt', ht'⟩ := exists_between ht
-  set C : β → F → Set X :=
-    fun u z => (fun x => f x z) ∘ (fun x ↦ ↑x)⁻¹' Iic u with hC_eq
-/-  have C_eq : ∀ (u : β) (z : F),
-    C u z = (fun x ↦ f x z) ∘ (fun (x : X) ↦ ↑x) ⁻¹' (Iic u) := by
-    intro u z
-    rfl -/
-  have mem_C_iff : ∀ (u z) (x : X), x ∈ C u z ↔ f x z ≤ u := by
-    intro u z x; rfl
-  have hC : ∀ u v z, u ≤ v → C u z ⊆ C v z := by
-    intro u v z h
-    rintro x hxu
-    rw [mem_C_iff] at hxu ⊢
-    exact le_trans hxu h
+  let C : β → F → Set X := fun u z => (fun x => f x z) ∘ (fun x ↦ ↑x)⁻¹' Iic u
+  have mem_C_iff : ∀ (u z) (x : X), x ∈ C u z ↔ f x z ≤ u := fun u z x ↦
+    by simp only [mem_preimage, Function.comp_apply, mem_Iic, C]
+  have hC : ∀ u v z, u ≤ v → C u z ⊆ C v z := fun u v z h x hxu ↦ le_trans hxu h
   -- Uses that X is compact and nonempty !
   have hC_ne : ∀ z ∈ Y, (C t z).Nonempty := by
     intro z hz
@@ -214,14 +204,11 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     rw [lowerSemicontinuousOn_iff_restrict] at hfy
     rw [lowerSemicontinuous_iff_isClosed_preimage] at hfy
     exact hfy u
-  have hC_preconnected : ∀ u, ∀ {z}, z ∈ Y → IsPreconnected (C u z) := by
-    intro u z hz
-    exact (hfy' z hz).isPreconnected_preimage
-  have hC_disj : Disjoint (C t' y1) (C t' y2) := by
-    refine' Set.disjoint_iff.mpr
-      fun (x : X) hx => not_lt_of_le (iInf₂_le_of_le (x : E) _ _) ht'
-    · exact x.2
-    · exact sup_le_iff.mpr hx
+  have hC_preconnected : ∀ u, ∀ {z}, z ∈ Y → IsPreconnected (C u z) :=
+    fun y z hz ↦ (hfy' z hz).isPreconnected_preimage
+  have hC_disj : Disjoint (C t' y1) (C t' y2) :=
+    Set.disjoint_iff.mpr
+      fun x hx => not_lt_of_le (iInf₂_le_of_le (x : E) x.2 (sup_le_iff.mpr hx)) ht'
   have hC_subset : ∀ z ∈ segment ℝ y1 y2, C t' z ⊆ C t' y1 ∪ C t' y2 := by
     intro z hz x hx
     simp only [Set.mem_union, mem_C_iff, ← inf_le_iff]
@@ -236,12 +223,10 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
       (hC_preconnected _ (cY.segment_subset hy1 hy2 hz))
       _ _  (hC_closed _ hy1) (hC_closed _ hy2) (hC_subset _ hz)
     rw [Set.disjoint_iff_inter_eq_empty.mp hC_disj, Set.inter_empty]
-  /- have segment_subset : segment ℝ y1 y2 ⊆ Y :=
-    convex_iff_segment_subset.mp cY hy1 hy2 -/
   let J1 := {z : segment ℝ y1 y2 | C t z ⊆ C t' y1}
   -- do we really need this ? (I can't do without it)
-  have mem_J1_iff : ∀ z : segment ℝ y1 y2, z ∈ J1 ↔ C t z ⊆ C t' y1 := by intro z; rfl
-
+  have mem_J1_iff : ∀ z : segment ℝ y1 y2, z ∈ J1 ↔ C t z ⊆ C t' y1 :=
+    fun z ↦ by simp only [mem_setOf_eq, J1]
   have hJ1_closed : IsClosed J1 := by
     rw [isClosed_iff_clusterPt]
     -- Let `y` be a cluster point of `J1`
@@ -294,10 +279,8 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     apply hC
     exact le_of_lt htt'
   let J2 := {z : segment ℝ y1 y2 | C t z ⊆ C t' y2}
-  -- bizarrely, this is necessary to add this lemma,
-  -- rien du genre  rw set.mem_sep_iff ne marche…
-  have mem_J2_iff : ∀ z : segment ℝ y1 y2, z ∈ J2 ↔ C t z ⊆ C t' y2 := by
-    intro z; rfl
+  have mem_J2_iff : ∀ z : segment ℝ y1 y2, z ∈ J2 ↔ C t z ⊆ C t' y2 :=
+    fun z ↦ by simp only [mem_setOf_eq, J2]
   have hy2_mem_J2 : (⟨y2, right_mem_segment ℝ y1 y2⟩ : segment ℝ y1 y2) ∈ J2 :=
     hC t t' y2 (le_of_lt htt')
   have hJ2_closed : IsClosed J2 := by
@@ -578,6 +561,7 @@ variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
 
 variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
   (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
+
 
 /- The theorem is probably wrong without the additional hypothesis
 that Y is compact. Indeed, if the image of (λ y, f x y) is not bounded above,
