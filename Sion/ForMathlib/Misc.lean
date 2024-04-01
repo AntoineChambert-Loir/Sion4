@@ -1,7 +1,7 @@
 import Mathlib.Data.Real.EReal
-import Mathlib.Topology.Connected
+import Mathlib.Topology.Connected.Basic
 
-/-! 
+/-!
 
 # Miscellaneous lemmas to add to mathlib
 
@@ -10,8 +10,7 @@ import Mathlib.Topology.Connected
 
 -- order.complete_lattice
 theorem infi₂_le_iff {α β : Type _} [CompleteLattice β] {f : α → β} {s : Set α} {b : β} :
-    (⨅ x ∈ s, f x) ≤ b ↔ ∀ b', (∀ x ∈ s, b' ≤ f x) → b' ≤ b :=
-  by
+    (⨅ x ∈ s, f x) ≤ b ↔ ∀ b', (∀ x ∈ s, b' ≤ f x) → b' ≤ b := by
   rw [iInf_le_iff]; apply forall_congr'
   intro b'; simp_rw [le_iInf_iff]
 #align infi₂_le_iff infi₂_le_iff
@@ -29,8 +28,7 @@ instance : DenselyOrdered EReal :=
 -- This is essentially `is_preconnected_iff_subset_of_disjoint_closed`
 theorem IsPreconnected.subset_or_subset_of_closed {α : Type _} [TopologicalSpace α] {s u v : Set α}
     (hu : IsClosed u) (hv : IsClosed v) (huv : Disjoint u v) (hsuv : s ⊆ u ∪ v)
-    (hs : IsPreconnected s) : s ⊆ u ∨ s ⊆ v :=
-  by
+    (hs : IsPreconnected s) : s ⊆ u ∨ s ⊆ v := by
   apply (isPreconnected_iff_subset_of_disjoint_closed.mp hs) u v hu hv hsuv
   rw [Set.disjoint_iff_inter_eq_empty.mp huv, Set.inter_empty]
 #align is_preconnected.subset_or_subset_of_closed IsPreconnected.subset_or_subset_of_closed
@@ -51,8 +49,7 @@ theorem frequently_congr {f : Filter α} {p q : α → Prop} (h : ∀ᶠ x in f,
 #align filter.frequently_congr Filter.frequently_congr
 
 theorem frequently_congr' {α : Type _} (f : Filter α) (p q : α → Prop)
-    (h : ∀ᶠ a : α in f, p a ↔ q a) : (∃ᶠ a in f, p a) ↔ ∃ᶠ a in f, q a :=
-  by
+    (h : ∀ᶠ a : α in f, p a ↔ q a) : (∃ᶠ a in f, p a) ↔ ∃ᶠ a in f, q a := by
   dsimp only [Filter.Frequently]
   rw [not_iff_not]
   apply Filter.eventually_congr
@@ -61,8 +58,7 @@ theorem frequently_congr' {α : Type _} (f : Filter α) (p q : α → Prop)
 
 theorem clusterPt_principal_subtype_iff_frequently {α : Type _} [TopologicalSpace α] {s t : Set α}
     (hst : s ⊆ t) {J : Set s} {a : ↥s} :
-    ClusterPt a (Filter.principal J) ↔ ∃ᶠ x in nhdsWithin a t, ∃ h : x ∈ s, (⟨x, h⟩ : s) ∈ J :=
-  by
+    ClusterPt a (Filter.principal J) ↔ ∃ᶠ x in nhdsWithin a t, ∃ h : x ∈ s, (⟨x, h⟩ : s) ∈ J := by
   rw [nhdsWithin_eq_map_subtype_coe (hst a.prop), Filter.frequently_map,
     clusterPt_principal_iff_frequently, inducing_subtype_val.nhds_eq_comap, Filter.frequently_comap,
     inducing_subtype_val.nhds_eq_comap, Filter.frequently_comap, Subtype.coe_mk]
@@ -73,7 +69,7 @@ theorem clusterPt_principal_subtype_iff_frequently {α : Type _} [TopologicalSpa
   exact ⟨fun ⟨h, hx⟩ => ⟨hst h, h, hx⟩, fun ⟨_, hx⟩ => hx⟩
 #align filter.cluster_pt_principal_subtype_iff_frequently Filter.clusterPt_principal_subtype_iff_frequently
 
-/- 
+/-
 -- Ancienne version
 example {α : Type _} [TopologicalSpace α] {s t : Set α} (hst : s ⊆ t) {J : Set s} {a : ↥s} :
     ClusterPt a (Filter.principal J) ↔ ∃ᶠ x in nhdsWithin a t, ∃ h : x ∈ s, (⟨x, h⟩ : s) ∈ J :=
@@ -86,7 +82,7 @@ example {α : Type _} [TopologicalSpace α] {s t : Set α} (hst : s ⊆ t) {J : 
     obtain ⟨u, hu, hut⟩ := inducing_subtype_val.isOpen_iff.mp hv_open
     use u
     apply And.intro hu
-    simp only [← hut, Set.mem_preimage] at hav 
+    simp only [← hut, Set.mem_preimage] at hav
     apply And.intro hav
     intro x hx
     simp only [Set.mem_setOf_eq]
@@ -98,7 +94,7 @@ example {α : Type _} [TopologicalSpace α] {s t : Set α} (hst : s ⊆ t) {J : 
   · rintro ⟨u, hu_open, hat, hut_subset⟩
     use (fun x ↦ ↑x) ⁻¹' u
     constructor
-    rintro ⟨x, hx⟩ hx'; rw [Set.mem_preimage] at hx' 
+    rintro ⟨x, hx⟩ hx'; rw [Set.mem_preimage] at hx'
     apply hut_subset
     exact ⟨hx', hst hx⟩
     exact ⟨isOpen_induced hu_open, hat⟩
@@ -120,7 +116,7 @@ example {α : Type _} [TopologicalSpace α] (s t : Set α) (hst : s ⊆ t) (J : 
   intro hu_open
   constructor
   · rintro ⟨x, hux, hax, hx⟩
-    simp only [← hux, Set.mem_preimage] at hax 
+    simp only [← hux, Set.mem_preimage] at hax
     apply And.intro hax
     intro y hyut hys
     apply hx; simp only [← hux, Set.mem_preimage]; exact hyut.1
@@ -146,7 +142,7 @@ theorem clusterPt_principal_subtype_iff_frequently' {α : Type _} [TopologicalSp
     obtain ⟨u, hu, hut⟩ := inducing_subtype_val.isOpen_iff.mp hv_open
     use u
     apply And.intro hu
-    simp only [← hut, Set.mem_preimage] at hav 
+    simp only [← hut, Set.mem_preimage] at hav
     apply And.intro hav
     intro x hx
     simp only [Set.mem_setOf_eq]
@@ -158,7 +154,7 @@ theorem clusterPt_principal_subtype_iff_frequently' {α : Type _} [TopologicalSp
   · rintro ⟨u, hu_open, hat, hut_subset⟩
     use coe ⁻¹' u
     constructor
-    rintro ⟨x, hx⟩ hx'; rw [Set.mem_preimage] at hx' 
+    rintro ⟨x, hx⟩ hx'; rw [Set.mem_preimage] at hx'
     apply hut_subset
     exact ⟨hx', hx⟩
     exact ⟨isOpen_induced hu_open, hat⟩
@@ -187,4 +183,3 @@ theorem inf_mem_of_mem {α : Type _} [LinearOrder α] {a b : α} {s : Set α} (h
 theorem sup_mem_of_mem {α : Type _} [LinearOrder α] {a b : α} {s : Set α} (ha : a ∈ s)
     (hb : b ∈ s) : a ⊔ b ∈ s := by rw [sup_eq_max] ; exact max_mem_of_mem ha hb
 #align sup_mem_of_mem sup_mem_of_mem
-
