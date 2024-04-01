@@ -141,100 +141,24 @@ theorem LowerSemicontinuousOn.comp {γ : Type _} [TopologicalSpace γ] {g : γ �
 
 theorem lowerSemicontinuousOn_iff_restrict {s : Set α} :
     LowerSemicontinuousOn f s ↔ LowerSemicontinuous (s.restrict f) := by
-  -- I never remember the name of `set_coe.forall`...
   rw [LowerSemicontinuousOn, LowerSemicontinuous, SetCoe.forall]
   refine' forall₂_congr fun a ha => forall₂_congr fun b _ => _
   simp only [nhdsWithin_eq_map_subtype_coe ha, eventually_map, restrict]
 #align lower_semicontinuous_on_iff_restrict lowerSemicontinuousOn_iff_restrict
 
-/- ./././Mathport/Syntax/Translate/Tactic/Builtin.lean:73:14: unsupported tactic `congrm #[[expr ∀ b : β, «expr∃ , »((t), «expr ∧ »(_, _))]] -/
 theorem lowerSemicontinuousOn_iff_preimage_Ioi {s : Set α} :
     LowerSemicontinuousOn f s ↔ ∀ b, ∃ u : Set α, IsOpen u ∧ s ∩ f ⁻¹' Set.Ioi b = s ∩ u := by
-  -- weird error when I add `preimage_comp` in the `simp`...
-  simp only [lowerSemicontinuousOn_iff_restrict, lowerSemicontinuous_iff_isOpen_preimage,
-    isOpen_induced_iff, restrict_eq]
-  /- trace
-    "./././Mathport/Syntax/Translate/Tactic/Builtin.lean:73:14: unsupported tactic `congrm #[[expr ∀ b : β, «expr∃ , »((t), «expr ∧ »(_, _))]]" -/
-  simp only [preimage_comp, Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
-#align lower_semicontinuous_on_iff_preimage_Ioi lowerSemicontinuousOn_iff_preimage_Ioi
+  simp only [lowerSemicontinuousOn_iff_restrict, restrict_eq,
+    lowerSemicontinuous_iff_isOpen_preimage, preimage_comp, isOpen_induced_iff,
+    Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
 
-/- ./././Mathport/Syntax/Translate/Tactic/Builtin.lean:73:14: unsupported tactic `congrm #[[expr ∀ b : β, «expr∃ , »((t), «expr ∧ »(_, _))]] -/
 theorem lowerSemicontinuousOn_iff_preimage_Iic {s : Set α} :
     LowerSemicontinuousOn f s ↔ ∀ b, ∃ v : Set α, IsClosed v ∧ s ∩ f ⁻¹' Set.Iic b = s ∩ v := by
-  -- weird error when I add `preimage_comp` in the `simp`...
-  simp only [lowerSemicontinuousOn_iff_restrict, lowerSemicontinuous_iff_isClosed_preimage,
-    isClosed_induced_iff, restrict_eq]
-  /- trace
-    "./././Mathport/Syntax/Translate/Tactic/Builtin.lean:73:14: unsupported tactic `congrm #[[expr ∀ b : β, «expr∃ , »((t), «expr ∧ »(_, _))]]" -/
-  simp only [preimage_comp, Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
+  simp only [lowerSemicontinuousOn_iff_restrict, restrict_eq,
+    lowerSemicontinuous_iff_isClosed_preimage, preimage_comp, isClosed_induced_iff,
+    Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
 #align lower_semicontinuous_on_iff_preimage_Iic lowerSemicontinuousOn_iff_preimage_Iic
 
--- This is ridiculously difficult !
---lemma lower_semicontinuous_on_iff_preimage_Iic {s : set α} :
---  lower_semicontinuous_on f s ↔
---  ∀ b, ∃ (v : set α), is_closed v ∧ f ⁻¹' (set.Iic b) ∩ s = v ∩ s :=
---begin
---  split,
---  { intro hf,
---    intro b,
---    use closure (f ⁻¹' Iic b ∩ s),
---    simp only [is_closed_closure, true_and],
---    apply subset.antisymm,
---    rintros a ha, exact ⟨subset_closure ha, ha.2⟩,
---
---    rintros a ⟨hab, has⟩,
---    apply and.intro _ has,
---    simp only [mem_preimage, mem_Iic],
---     simp only [lower_semicontinuous_on, lower_semicontinuous_within_at] at hf,
---    rw ← not_lt, intro hb,
---    simp only [mem_closure_iff_frequently, mem_preimage, mem_Iic, mem_inter_iff] at hab,
---    apply hab,
---    dsimp,
---    specialize hf a has b hb,
---    simp only [filter.eventually] at hf ⊢,
---    simp only [nhds_within, filter.mem_inf_iff] at hf,
---    obtain ⟨u, hu, v, hv, huv⟩ := hf,
---    simp only [mem_principal] at hv,
---    simp_rw [not_and_distrib, not_le],
---    rw set.set_of_or, rw huv,
---    apply filter.mem_of_superset hu,
---    intros x hx,
---    by_cases hx' : x ∈ s,
---    left, exact ⟨hx, hv hx'⟩,
---    right, exact hx', },
---  { intro hf,
---    simp only [lower_semicontinuous_on, lower_semicontinuous_within_at],
---    intros a ha b hb,
---    simp only [filter.eventually, nhds_within, filter.mem_inf_iff],
---
---    obtain ⟨v, hv_closed, hv⟩ := hf b,
---    simp only [filter.mem_principal],
---    use (vᶜ ∪ sᶜ),
---    split,
---    apply filter.mem_of_superset,
---
---    apply is_open.mem_nhds ,
---    { rw is_open_compl_iff, exact hv_closed, },
---    { simp only [mem_compl_iff], intro hav,
---      rw ← not_le at hb, apply hb,
---      rw ← mem_Iic, rw ← set.mem_preimage,
---      apply set.inter_subset_left,
---      rw hv, exact ⟨hav, ha⟩, },
---    exact vᶜ.subset_union_left sᶜ,
---
---    use ({ x : α | b < f x} ∪ s),
---    split,
---    apply set.subset_union_right,
---
---    rw ← compl_inj_iff,
---    simp only [set.compl_inter, set.compl_union, compl_compl],
---
---    rw ← hv,
---    suffices : f ⁻¹' Iic b = { x : α | b < f x }ᶜ,
---    rw this,
---    rw set.inter_union_compl,
---    ext x, simp only [mem_preimage, mem_Iic, mem_compl_iff, mem_set_of_eq, not_lt], },
---end
 /-- A lower semicontinuous function attains its lower bound on a nonempty compact set -/
 theorem LowerSemicontinuousOn.exists_forall_le_of_isCompact {s : Set α} (ne_s : s.Nonempty)
     (hs : IsCompact s) (hf : LowerSemicontinuousOn f s) : ∃ a ∈ s, ∀ x ∈ s, f a ≤ f x := by
@@ -263,7 +187,6 @@ theorem LowerSemicontinuousOn.exists_forall_le_of_isCompact {s : Set α} (ne_s :
   suffices ∀ᶠ _ in 𝓝 a ⊓ ℱ, False by rwa [eventually_const] at this
   filter_upwards [(hf a ha (f x) hxa).filter_mono (inf_le_inf_left _ hℱs),
     (hℱ x hx).filter_mono (inf_le_right : 𝓝 a ⊓ ℱ ≤ ℱ)] using fun y h₁ h₂ => not_le_of_lt h₁ h₂
-#align lower_semicontinuous_on.exists_forall_le_of_is_compact LowerSemicontinuousOn.exists_forall_le_of_isCompact
 
 /-- A lower semicontinuous function is bounded above on a compact set. -/
 theorem LowerSemicontinuousOn.bddBelow_of_isCompact [Nonempty β] {s : Set α} (hs : IsCompact s)
