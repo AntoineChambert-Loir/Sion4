@@ -195,10 +195,158 @@ variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
 variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
   (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
 
+/-- The familywise sublevel sets of f -/
+private def C : β → F → Set X :=
+  fun b z => (fun x => f x z) ∘ (fun x ↦ ↑x)⁻¹' Iic b
+
+private theorem mem_C_iff (b : β) (y : Y) (x : X) :
+    x ∈ C X f b y ↔ f x y ≤ b := by simp [C]
+
+private theorem monotone_C (u v : β) (y : Y) (h : u ≤ v) :
+    C X f u y ⊆ C X f v y :=
+  fun _ hxu ↦ le_trans hxu h
+
+  -- Uses that X is compact and nonempty !
+private theorem nonempty_C (y : Y) {b : β} (h : ∀ y ∈ Y, ∃ x ∈ X, f x y ≤ b) :
+    (C X f b y).Nonempty := by
+  rcases y with ⟨y, hy⟩
+  obtain ⟨x, hx, hx_le⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact ne_X kX (hfy y hy)
+  obtain ⟨x', hx', hx'b⟩ := h y hy
+  exact ⟨⟨x, hx⟩, le_trans (hx_le x' hx') hx'b⟩
+
+private theorem isClosed_C (b : β) (y : Y) :
+    IsClosed (C X f b y) := by
+  specialize hfy y.val y.prop
+  rw [lowerSemicontinuousOn_iff_restrict] at hfy
+  rw [lowerSemicontinuous_iff_isClosed_preimage] at hfy
+  exact hfy b
+
+private theorem isPreconnected_C (b : β) (y : Y) :
+    IsPreconnected (C X f b y) :=
+  (hfy' y.val y.prop).isPreconnected_preimage
+
+private theorem disjoint_C (a : E) (b : β) (y y' : Y)
+    (ha : ∀ x ∈ X, f a y ⊔ f a y' ≤ f x y ⊔ f x y')
+    (hb : b < f a y ⊔ f a y') :
+    Disjoint (C X f b y) (C X f b y') := by
+  rw [Set.disjoint_iff]
+  rintro ⟨x, hx⟩ ⟨hx1, hx2⟩
+  simp only [mem_empty_iff_false]
+  apply not_le_of_lt hb
+  apply le_trans (ha x hx)
+  simp only [sup_le_iff]
+  exact ⟨hx1, hx2⟩
+
+private theorem C_subset_union (b : β) (y y' : Y)
+    (z : segment ℝ y.val y'.val) :
+    C X f b z ⊆ C X f b y ∪ C X f b y' := fun x hx ↦ by
+    simp only [Set.mem_union, mem_C_iff, ← inf_le_iff]
+    specialize hfx' x x.2 (f x y ⊓ f x y')
+    rw [convex_iff_segment_subset] at hfx'
+    specialize hfx' ⟨y.prop, inf_le_left⟩ ⟨y'.prop, inf_le_right⟩ z.prop
+    exact le_trans hfx'.2 hx
+
+private theorem C_subset_or
+    (a : E) (b : β) (y y' : Y)
+    (ha : ∀ x ∈ X, f a y ⊔ f a y' ≤ f x y ⊔ f x y')
+    (hb : b < f a y ⊔ f a y')
+    (z : segment ℝ y.val y'.val) :
+    C X f b z ⊆ C X f b y ∨ C X f b z ⊆ C X f b y' := by
+  apply isPreconnected_iff_subset_of_disjoint_closed.mp
+    (isPreconnected_C X Y f hfy' b ⟨z, cY.segment_subset y.prop y'.prop z.prop⟩)
+    _ _ (isClosed_C X Y f hfy b y) (isClosed_C X Y f hfy b y')
+    (C_subset_union X Y f hfx' b y y' z)
+  rw [Set.disjoint_iff_inter_eq_empty.mp (disjoint_C X Y f a b y y' ha hb),
+    Set.inter_empty]
+
+example (y y' : F) : segment ℝ y y' = segment ℝ y' y :=
+  segment_symm ℝ y y'
+
+private def J (b b' : β) (y y' : Y) :=
+    {z : segment ℝ y.val y'.val | C X f b z ⊆ C X f b' y}
+
+-- L'ensemble J' est défini de même pour en changeant les rôles de y et y'
+-- mais (segment ℝ y y') n'est pas déf. éal à (segment ℝ y' y)
+-- On a besoin de dire qu'ils sont disjoints
+-- Solutions :
+--   1) définir ces ensembles dans F
+--   2) calculer l'intersection dans F
+
+private theorem mem_J_iff (b b' : β) (y y' : Y) (z : segment ℝ y.val y'.val) :
+    z ∈ J X Y f b b' y y' ↔ C X f b z ⊆ C X f b' y := by
+  simp only [mem_setOf_eq, J]
+
+private theorem y_mem_J (b b' : β) (y y' : Y) (hbb' : b ≤ b') :
+    (⟨y.val, left_mem_segment ℝ y.val y'.val⟩ : segment ℝ y.val y'.val) ∈ J X Y f b b' y y' :=
+  monotone_C X Y f b b' y hbb'
+
+private theorem isClosed_J
+    (a : E) (b b' : β) (y y' : Y)
+    (ha : ∀ x ∈ X, f a y ⊔ f a y' ≤ f x y ⊔ f x y')
+    (hb : ∀ y ∈ Y, ∃ x ∈ X, f x y ≤ b)
+    (hb' : b' < f a y ⊔ f a y')
+    (hbb' : b < b') :
+    IsClosed (J X Y f b b' y y') := by
+  rw [isClosed_iff_clusterPt]
+    -- Let `y` be a cluster point of `J1`
+    -- let us show it's in `J1`, i.e `C t y ⊆ C t' y1`.
+    -- Let `x ∈ C t y`
+    -- and let's find some `z ∈ J1` such that `x ∈ C t z ⊆ C t' y1`.
+  intro z hz x hx
+  have hzY :=(convex_iff_segment_subset.mp cY) y.prop y'.prop z.prop
+    /- y = lim yn, yn ∈ J1
+       comme x ∈ C t y, on a f x y ≤ t < t',
+       comme (f x ⬝) est usc, f x yn < t' pour n assez grand
+       donc x ∈ C t' yn pour n assez grand
+
+       pour z ∈ J1 tel que x ∈ C t' z
+       On prouve C t' z ⊆ C t' y1
+       Par hypothèse, C t z ⊆ C t' y1
+       Sinon, C t' z ⊆ C t' y2 (hC_subset_or)
+       Donc x ∈ C t' y1 ∩ C t' y2 = ∅, contradiction
+
+       En particulier, x ∈ C yt' y1
+
+    -/
+  suffices ∃ z' ∈ J X Y f b b' y y', x ∈ C X f b' (z' : F) by
+    obtain ⟨z', hz', hxz'⟩ := this
+    suffices C X f b' z' ⊆ C X f b' y by
+      exact this hxz'
+    apply Or.resolve_right (C_subset_or X Y cY f hfx' hfy hfy' a b' y y' ha hb' z')
+    intro hz'2
+    have hz'Y :=(convex_iff_segment_subset.mp cY) y.prop y'.prop z'.prop
+    apply (nonempty_C X ne_X kX Y f hfy ⟨z', hz'Y⟩ hb).not_subset_empty
+    simp only [← disjoint_iff_inter_eq_empty.mp (disjoint_C X Y f a b' y y' ha hb')]
+    apply Set.subset_inter hz'
+    apply subset_trans (monotone_C X Y f b b' ⟨z', hz'Y⟩ hbb'.le) hz'2
+
+    -- The first goal is to rewrite hfy (lsc of (f ⬝ y)) into an ∀ᶠ form
+  simp only [UpperSemicontinuousOn, UpperSemicontinuousWithinAt] at hfx
+  have := lt_of_le_of_lt hx hbb'
+  dsimp only [Function.comp_apply] at this
+  specialize hfx x.val x.prop z (cY.segment_subset y.prop y'.prop z.prop) b'
+    (lt_of_le_of_lt hx hbb')
+    -- We rewrite h into an ∃ᶠ form
+  rw [Filter.clusterPt_principal_subtype_iff_frequently (cY.segment_subset y.prop y'.prop)] at hz
+  suffices ∀ᶠ z' : F in nhdsWithin z Y,
+    (∃ hz' : z' ∈ segment ℝ y.val y'.val, (⟨z', hz'⟩ : segment ℝ y.val y'.val) ∈ J X Y f b b' y y') →
+      ∃ hz' : z' ∈ segment ℝ y.val y'.val, x ∈ C X f b' z'
+        ∧ (⟨z', hz'⟩ : segment ℝ y.val y'.val) ∈ J X Y f b b' y y' by
+    obtain ⟨z', hz', hxz'1, hxz'2⟩ := Filter.Frequently.exists (Filter.Frequently.mp hz this)
+    exact ⟨⟨z', hz'⟩, ⟨hxz'2, hxz'1⟩⟩
+  · -- this
+    apply Filter.Eventually.mp hfx
+    apply Filter.eventually_of_forall
+    intro z hzt'
+    rintro ⟨hz, hz'⟩
+    exact ⟨hz, ⟨le_of_lt hzt', hz'⟩⟩
+
+
 theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : β}
     (ht : ∀ x ∈ X, t < f x y1 ⊔ f x y2) :
     ∃ y0 ∈ Y, ∀ x ∈ X, t < f x y0 := by
   by_contra hinfi_le
+  push_neg at hinfi_le
   obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact
     ne_X kX (f := fun x ↦ f x y1 ⊔ f x y2) (by
       apply LowerSemicontinuousOn.sup
@@ -218,7 +366,6 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     obtain ⟨x, hx, hx_le⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact ne_X kX (hfy z hz)
     use ⟨x, hx⟩
     rw [mem_C_iff, Subtype.coe_mk]
-    push_neg at hinfi_le
     obtain ⟨x', hx', hx't⟩ := hinfi_le z hz
     exact le_trans (hx_le x' hx') hx't
 
@@ -231,6 +378,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
 
   have hC_preconnected : ∀ b, ∀ z ∈ Y, IsPreconnected (C b z) :=
     fun b z hz ↦ (hfy' z hz).isPreconnected_preimage
+
 
   have hCt'_disj : Disjoint (C t' y1) (C t' y2) := by
       rw [Set.disjoint_iff]
