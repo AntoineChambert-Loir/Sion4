@@ -269,8 +269,8 @@ private def J (b b' : β) (y y' : Y) :=
 -- mais (segment ℝ y y') n'est pas déf. éal à (segment ℝ y' y)
 -- On a besoin de dire qu'ils sont disjoints
 -- Solutions :
---   1) définir ces ensembles dans F
---   2) calculer l'intersection dans F
+--   1) définir ces ensembles dans F ou dans Y (ne marche pas bien)
+--   2) calculer l'intersection dans F (essayons !)
 
 private theorem mem_J_iff (b b' : β) (y y' : Y) (z : segment ℝ y.val y'.val) :
     z ∈ J X Y f b b' y y' ↔ C X f b z ⊆ C X f b' y := by
@@ -343,6 +343,96 @@ private theorem isClosed_J
 
 
 theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : β}
+    (ht : ∀ x ∈ X, t < f x y1 ⊔ f x y2) :
+    ∃ y0 ∈ Y, ∀ x ∈ X, t < f x y0 := by
+  by_contra hinfi_le
+  push_neg at hinfi_le
+  obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact
+    ne_X kX (f := fun x ↦ f x y1 ⊔ f x y2) (by
+      apply LowerSemicontinuousOn.sup
+      exact hfy y1 hy1
+      exact hfy y2 hy2)
+  obtain ⟨t', htt', ht'⟩ := exists_between (ht a ha)
+
+  let J1 := J X Y f t t' ⟨y1, hy1⟩ ⟨y2, hy2⟩
+  have mem_J1_iff : ∀ (z : F) (hz : z ∈ segment ℝ y1 y2),
+      ⟨z, hz⟩ ∈ J1 ↔ ERealSion.C X f t z ⊆ ERealSion.C X f t' y1 :=
+    fun z _ ↦ by simp [J1, J]
+  let φ : segment ℝ y1 y2 ≃ₜ segment ℝ y2 y1 := by
+    apply Homeomorph.subtype (Homeomorph.refl F)
+    intro x
+    rw [segment_symm ℝ y2 y1]
+    simp only [Homeomorph.refl_apply, id_eq]
+  let J2 := φ ⁻¹' (J X Y f t t' ⟨y2, hy2⟩ ⟨y1, hy1⟩)
+  have mem_J2_iff : ∀ (z : F) (hz : z ∈ segment ℝ y1 y2),
+      ⟨z, hz⟩ ∈ J2 ↔ ERealSion.C X f t z ⊆ ERealSion.C X f t' y2 :=
+    fun z hz ↦ by simp [J2, J, φ, segment_symm ℝ y2 y1, hz]
+  have hJ1J2 : J1 ∩ J2 = ∅ := by
+    rw [Set.eq_empty_iff_forall_not_mem]
+    simp only [mem_inter_iff, not_and]
+    rintro ⟨z, hz⟩ hz1 hz2
+    simp only [mem_J1_iff] at hz1
+    simp only [mem_J2_iff] at hz2
+    have hz_mem_Y : z ∈ Y := cY.segment_subset hy1 hy2 hz
+    apply Set.Nonempty.not_subset_empty (nonempty_C X ne_X kX Y f hfy ⟨z, hz_mem_Y⟩ hinfi_le)
+    rw [Set.subset_empty_iff, ← bot_eq_empty, ← disjoint_self]
+    exact Set.disjoint_of_subset hz1 hz2 (disjoint_C X Y f a t' ⟨y1, hy1⟩ ⟨y2, hy2⟩ ha' ht')
+  have hJ1_union_J2 : J1 ∪ J2 = segment ℝ y1 y2 := by
+    ext z
+    constructor
+    · rintro ⟨⟨z, hz⟩, _, rfl⟩
+      exact hz
+    · intro hz
+      have hz_mem_Y : z ∈ Y := cY.segment_subset hy1 hy2 hz
+      use ⟨z, hz⟩
+      refine ⟨?_, rfl⟩
+      rcases C_subset_or X Y cY f hfx' hfy hfy' a t' ⟨y1, hy1⟩ ⟨y2, hy2⟩ ha' ht' ⟨z, hz⟩ with (h1 | h2)
+      · left
+        simp only [mem_J1_iff]
+        exact subset_trans (monotone_C X Y f t t' ⟨z, hz_mem_Y⟩ htt'.le) h1
+      · right
+        simp only [mem_J2_iff]
+        exact subset_trans (monotone_C X Y f t t' ⟨z, hz_mem_Y⟩ htt'.le) h2
+  suffices IsPreconnected (Set.univ : Set (segment ℝ y1 y2)) by
+    rw [isPreconnected_iff_subset_of_disjoint_closed] at this
+    rw [Set.eq_empty_iff_forall_not_mem] at hJ1J2
+    rcases this J1 J2 ?_ ?_ ?_ ?_ with (h1 | h2)
+    · apply hJ1J2 ⟨y2, right_mem_segment ℝ y1 y2⟩
+      rw [Set.mem_inter_iff]
+      refine ⟨h1 (Set.mem_univ _), ?_⟩
+      rw [mem_J2_iff]
+      apply monotone_C X Y f t t' ⟨y2, hy2⟩ htt'.le
+    · apply hJ1J2 ⟨y1, left_mem_segment ℝ y1 y2⟩
+      rw [Set.mem_inter_iff]
+      refine ⟨?_, h2 (Set.mem_univ _)⟩
+      rw [mem_J1_iff]
+      apply monotone_C X Y f t t' ⟨y1, hy1⟩ htt'.le
+  · rw [← Set.eq_empty_iff_forall_not_mem] at hJ1J2
+    simp only [hJ1J2, inter_empty]
+  · -- is preconnected
+    rw [← inducing_subtype_val.isPreconnected_image]
+    simp only [image_univ, Subtype.range_coe_subtype, setOf_mem_eq]
+    exact Convex.isPreconnected (convex_segment y1 y2)
+  · -- is closed J1
+    exact isClosed_J X ne_X kX Y cY f hfx hfx' hfy hfy' a t t' ⟨y1, hy1⟩ ⟨y2, hy2⟩ ha' hinfi_le ht' htt'
+  · -- is closed J2
+    rw [Homeomorph.isClosed_preimage]
+    refine isClosed_J X ne_X kX Y cY f hfx hfx' hfy hfy' a t t' ⟨y2, hy2⟩ ⟨y1, hy1⟩ ?_ hinfi_le ?_ htt'
+    · intro x
+      rw [sup_comm]; nth_rewrite 2 [sup_comm]
+      exact ha' x
+    · rw [sup_comm]; exact ht'
+  · -- univ ⊆ J1 ∪ J2
+    rintro ⟨z, hz⟩
+    rw [← hJ1_union_J2] at hz
+    rcases hz with ⟨⟨z, hz'⟩, hz'', rfl⟩
+    intro _
+    exact hz''
+
+
+
+/-
+theorem exists_lt_iInf_of_lt_iInf_of_sup_orig {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : β}
     (ht : ∀ x ∈ X, t < f x y1 ⊔ f x y2) :
     ∃ y0 ∈ Y, ∀ x ∈ X, t < f x y0 := by
   by_contra hinfi_le
@@ -502,6 +592,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     rintro z ⟨hz1, hz2⟩
     rw [mem_J1_iff] at hz1
     rw [mem_J2_iff] at hz2
+    have := hC_ne z (cY.segment_subset hy1 hy2 z.prop)
     apply Set.Nonempty.not_subset_empty (hC_ne z (cY.segment_subset hy1 hy2 z.prop))
     rw [Set.subset_empty_iff, ← bot_eq_empty, ← disjoint_self]
     exact Set.disjoint_of_subset hz1 hz2 hCt'_disj
@@ -527,6 +618,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
   rw [← inducing_subtype_val.isPreconnected_image]
   simp only [image_univ, Subtype.range_coe_subtype, setOf_mem_eq]
   exact Convex.isPreconnected (convex_segment y1 y2)
+-/
 
 theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : β}
     (ht : ∀ x ∈ X, ∃ y ∈ s, t < f x y) :
