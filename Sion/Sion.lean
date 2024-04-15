@@ -417,16 +417,12 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     exact isClosed_J X ne_X kX Y cY f hfx hfx' hfy hfy' a t t' ⟨y1, hy1⟩ ⟨y2, hy2⟩ ha' hinfi_le ht' htt'
   · -- is closed J2
     rw [Homeomorph.isClosed_preimage]
-    refine isClosed_J X ne_X kX Y cY f hfx hfx' hfy hfy' a t t' ⟨y2, hy2⟩ ⟨y1, hy1⟩ ?_ hinfi_le ?_ htt'
-    · intro x
-      rw [sup_comm]; nth_rewrite 2 [sup_comm]
-      exact ha' x
-    · rw [sup_comm]; exact ht'
+    simp only [sup_comm (f _ y1)] at ha' ht'
+    refine isClosed_J X ne_X kX Y cY f hfx hfx' hfy hfy' a t t' ⟨y2, hy2⟩ ⟨y1, hy1⟩ ha' hinfi_le ht' htt'
   · -- univ ⊆ J1 ∪ J2
-    rintro ⟨z, hz⟩
+    rintro ⟨z, hz⟩ _
     rw [← hJ1_union_J2] at hz
     rcases hz with ⟨⟨z, hz'⟩, hz'', rfl⟩
-    intro _
     exact hz''
 
 
