@@ -739,29 +739,13 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
         obtain ⟨a, ha, h⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact
           ne_X kX (hfy y0 hy0)
         exact lt_of_lt_of_le (ht0 a ha) (le_iInf₂_iff.mpr h)
-      suffices hst : t < ⨅ x ∈ X, ⨆ y ∈ s, f x y by
-        rw [← not_le] at hst
-        intro x hx
-        by_contra hx'
-        push_neg at hx'
-        apply hst
-        apply iInf₂_le_of_le x hx
-        rw [iSup₂_le_iff]
-        exact hx'
-      · -- hst
-        suffices hlsc : LowerSemicontinuousOn (fun x => ⨆ y ∈ s, f x y) X by
-          obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
-          rw [← ha']
-          rw [← not_le]
-          rw [iSup₂_le_iff]
-          intro hes'
-          rw [Set.eq_empty_iff_forall_not_mem] at hes
-          apply hes a
-          simp only [ge_iff_le, iInf_eq_iInter, mem_iInter, mem_setOf_eq]
-          intro y hy
-          exact ⟨ha, hes' y hy⟩
-        apply lowerSemicontinuousOn_supr₂ hs fun i hi => hfy i (hsY hi)
-
+      intro x hx
+      by_contra hx'
+      push_neg at hx'
+      rw [Set.eq_empty_iff_forall_not_mem] at hes
+      apply hes x
+      simp only [mem_iInter, mem_setOf_eq, X', forall₂_and]
+      exact ⟨fun _ _ ↦ hx, hx'⟩
     suffices hfyt : ∀ y : Y, ∃ vy : Set E, IsClosed vy ∧ X' y = X ∩ vy by
       let v : Y → Set E := fun y ↦ Exists.choose (hfyt y)
       have hv : ∀ y, IsClosed (v y) ∧ X' y = X ∩ v y := fun y ↦ (hfyt y).choose_spec
@@ -820,7 +804,7 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
 
 /-- The Sion-von Neumann minimax theorem (saddle point form) -/
 theorem exists_saddlePointOn :
-  ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
+    ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
   suffices hlsc : LowerSemicontinuousOn (fun x => ⨆ y ∈ Y, f x y) X by
     obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
     use a, ha
@@ -862,7 +846,6 @@ variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
 variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
   (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
 
-
 /- The theorem is probably wrong without the additional hypothesis
 that Y is compact. Indeed, if the image of (λ y, f x y) is not bounded above,
 then supr is defined as 0, while the theorem should interpret it as infinity.
@@ -877,9 +860,6 @@ but 0 for Lean… what about the rhs?)
 
 -/
 
--- TODO : start from a LinearOrder, DenselyOrdered and add with_top, with_bot
--- Problem : not Densely Ordered if it has min or sup…
-
 example : Monotone (Real.toEReal) := EReal.coe_strictMono.monotone
 
 example : Continuous (Real.toEReal) := by exact continuous_coe_real_ereal
@@ -890,7 +870,7 @@ the saddle point exists… -/
 theorem existsSaddlePointOn :
   ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
   -- Reduce to the cae of EReal-valued functions
-  let φ : E → F → EReal := fun x y ↦ (f x y)
+  let φ : E → F → EReal := fun x y ↦ (f x y).toEReal
   -- suffices : ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y φ a b
   have hφx : ∀ x ∈ X, UpperSemicontinuousOn (fun y ↦ φ x y) Y := fun x hx ↦
     continuous_coe_real_ereal.comp_upperSemicontinuousOn (hfx x hx) EReal.coe_strictMono.monotone
@@ -912,3 +892,74 @@ theorem existsSaddlePointOn :
 end Sion
 
 end Real
+
+#exit
+
+section
+
+namespace Order
+
+def Complete (β : Type*) := WithBot (WithTop β)
+
+local instance [LE β]: LE (Complete β) := WithBot.le
+
+local instance [LinearOrder β] : LinearOrder (Complete β) := WithBot.linearOrder
+
+-- TODO : start from a LinearOrder, DenselyOrdered and add with_top, with_bot
+-- Problem : not Densely Ordered if it has min or sup…
+#check eventually_nhdsSet_iff_forall
+example (f : E → β) (hf : LowerSemicontinuousOn f X)
+    {γ : Type*} [LinearOrder γ] (h : β → γ) (hh: StrictMono h) :
+    LowerSemicontinuousOn (h ∘ f) X := by
+  intro x hx c hc
+  suffices ∃ (b : β), b < f x ∧ c ≤ h b by
+    obtain ⟨b, hb, hcb⟩ := this
+    exact Filter.Eventually.mono (hf x hx b hb) (fun _ hby ↦ lt_of_le_of_lt hcb (hh hby))
+  sorry
+
+example (f : E → β) (hf : LowerSemicontinuousOn f X) :
+    LowerSemicontinuousOn (fun x ↦ some (some (f x)) : WithBot (WithTop β)) X := by
+  intro x hx c hc
+  suffices ∃ (b : β), b < f x ∧ c ≤ h b by
+    obtain ⟨b, hb, hcb⟩ := this
+    exact Filter.Eventually.mono (hf x hx b hb) (fun _ hby ↦ lt_of_le_of_lt hcb (hh hby))
+
+  sorry
+
+section noncomplete
+
+#check IsLUB
+variable (f : E → F → β) [LinearOrder β] [DenselyOrdered β]
+
+variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
+  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
+
+variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
+  (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
+
+noncomputable def φ₁ (y : Y) :
+    { a ∈ X | ∀ x ∈ X, f a y ≤ f x y} := by
+  choose a ha hmin using LowerSemicontinuousOn.exists_forall_le_of_isCompact ne_X kX (hfy y y.prop)
+  exact ⟨a, ha, hmin⟩
+
+example : UpperSemicontinuous (fun (y : Y) ↦ f (φ₁ X ne_X kX Y f hfy y).1 y) := by
+  intro y b hby
+  set A := (φ₁ X ne_X kX Y f hfy y) with hA
+  rcases A with ⟨a, ha, ha'⟩
+  simp only [mem_setOf_eq, ← hA] at hby
+  specialize hfx a ha y y.prop b hby
+  rw [eventually_nhdsWithin_iff] at hfx
+  rw [nhds_subtype_eq_comap]
+  simp only [mem_setOf_eq, Filter.eventually_comap, Subtype.forall]
+  apply Filter.Eventually.mono hfx
+  rintro x hx' x' hx ⟨rfl⟩
+  set A' := φ₁ X ne_X kX Y f hfy ⟨x, hx⟩ with hA'
+  rcases A' with ⟨a', ha'mem, ha'min⟩
+  specialize hx' hx; simp only at hx'
+  simp only [gt_iff_lt]
+  simp only at ha'min
+  apply lt_of_le_of_lt _ hx'
+  apply ha'min a ha
+
+
+end noncomplete
