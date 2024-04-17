@@ -259,6 +259,20 @@ private theorem C_subset_or
   rw [Set.disjoint_iff_inter_eq_empty.mp (disjoint_C X Y f a b y y' ha hb),
     Set.inter_empty]
 
+private theorem C_subset_or'
+    (a : E) (b : β) (y y' : Y)
+    (ha : ∀ x ∈ X, f a y ⊔ f a y' ≤ f x y ⊔ f x y')
+    (hb : b < f a y ⊔ f a y')
+    (z : Y) (hz : z.val ∈ segment ℝ y.val y'.val) :
+    C X f b z ⊆ C X f b y ∨ C X f b z ⊆ C X f b y' := by
+  apply isPreconnected_iff_subset_of_disjoint_closed.mp
+    (isPreconnected_C X Y f hfy' b ⟨z, cY.segment_subset y.prop y'.prop hz⟩)
+    _ _ (isClosed_C X Y f hfy b y) (isClosed_C X Y f hfy b y')
+    (C_subset_union X Y f hfx' b y y' ⟨z, hz⟩)
+  rw [Set.disjoint_iff_inter_eq_empty.mp (disjoint_C X Y f a b y y' ha hb),
+    Set.inter_empty]
+
+
 example (y y' : F) : segment ℝ y y' = segment ℝ y' y :=
   segment_symm ℝ y y'
 
@@ -340,7 +354,6 @@ private theorem isClosed_J
     intro z hzt'
     rintro ⟨hz, hz'⟩
     exact ⟨hz, ⟨le_of_lt hzt', hz'⟩⟩
-
 
 theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : β}
     (ht : ∀ x ∈ X, t < f x y1 ⊔ f x y2) :
@@ -624,13 +637,12 @@ theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : β}
   refine' Set.Finite.induction_on hs _ _
   · -- empty case
     intro X ne_X _ _ _ _ _ _
-    haveI : Nonempty X := nonempty_coe_sort.mpr ne_X
+    obtain ⟨x, hx⟩ := id ne_X
     simp only [biInf_const ne_X, mem_empty_iff_false, ciSup_false, ciSup_const,
       not_lt_bot, IsEmpty.forall_iff]
     simp only [false_and, exists_const, imp_false, empty_subset, forall_true_left]
     intro h
     exfalso
-    obtain ⟨x, hx⟩ := this
     exact h x hx
   · -- insert case
     intro b s _ _ hrec X ne_X _ kX hfx hfx' hfy hfy' ht hs'Y
@@ -639,15 +651,13 @@ theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : β}
     let X' := {x ∈ X | f x b ≤ t}
     cases' Set.eq_empty_or_nonempty X' with X'_e X'_ne
     · -- X' = ∅,
-      use b; constructor; apply hs'Y; exact mem_insert b s
+      use b, hb
       intro x hx
       rw [← not_le]
       intro h
       rw [Set.eq_empty_iff_forall_not_mem] at X'_e
-      obtain ⟨x', hx', hx'_le⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact ne_X kX (hfy b hb)
-      specialize X'_e x
-      apply X'_e
-      exact ⟨hx, h⟩
+      -- obtain ⟨x', _, _⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact ne_X kX (hfy b hb)
+      exact X'_e x ⟨hx, h⟩
     -- the nonempty case
     have hX'X : X' ⊆ X := by simp only [sep_subset, X']
     have kX' : IsCompact X' := by
@@ -729,6 +739,15 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
         obtain ⟨a, ha, h⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact
           ne_X kX (hfy y0 hy0)
         exact lt_of_lt_of_le (ht0 a ha) (le_iInf₂_iff.mpr h)
+      suffices hst : t < ⨅ x ∈ X, ⨆ y ∈ s, f x y by
+        rw [← not_le] at hst
+        intro x hx
+        by_contra hx'
+        push_neg at hx'
+        apply hst
+        apply iInf₂_le_of_le x hx
+        rw [iSup₂_le_iff]
+        exact hx'
       · -- hst
         suffices hlsc : LowerSemicontinuousOn (fun x => ⨆ y ∈ s, f x y) X by
           obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
@@ -821,6 +840,7 @@ theorem exists_saddlePointOn :
   apply lowerSemicontinuousWithinAt_iSup₂ ne_Y kY _ (hfx x hx)
   intro y hy; exact hfy y hy x hx
 
+end complete
 
 end ERealSion
 
