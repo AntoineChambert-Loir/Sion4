@@ -79,14 +79,12 @@ theorem iSup₂_iInf₂_le_iInf₂_iSup₂ [CompleteLinearOrder β]:
   rw [iSup₂_le_iff]; intro y hy
   rw [le_iInf₂_iff]; intro x hx
   exact iInf₂_le_of_le x hx (le_iSup₂_of_le y hy (le_refl _))
-#align ereal_sion.supr₂_infi₂_le_infi₂_supr₂ iSup₂_iInf₂_le_iInf₂_iSup₂
 
 -- [Hiriart-Urruty, (4.1.4)]
 /-- The pair (a,b) is a saddle point of f on X × Y
   (does not enforce that a ∈ X and b ∈ Y) -/
 def IsSaddlePointOn  [Preorder β] (a : E) (b : F) :=
   ∀ x ∈ X, ∀ y ∈ Y, f a y ≤ f x b
-#align is_saddle_point_on IsSaddlePointOn
 
 variable {X Y f}
 -- [Hiriart-Urruty, (4.1.1)]
@@ -207,6 +205,7 @@ private theorem monotone_C (u v : β) (y : Y) (h : u ≤ v) :
   fun _ hxu ↦ le_trans hxu h
 
   -- Uses that X is compact and nonempty !
+include ne_X kX hfy in
 private theorem nonempty_C (y : Y) {b : β} (h : ∀ y ∈ Y, ∃ x ∈ X, f x y ≤ b) :
     (C X f b y).Nonempty := by
   rcases y with ⟨y, hy⟩
@@ -214,6 +213,7 @@ private theorem nonempty_C (y : Y) {b : β} (h : ∀ y ∈ Y, ∃ x ∈ X, f x y
   obtain ⟨x', hx', hx'b⟩ := h y hy
   exact ⟨⟨x, hx⟩, le_trans (hx_le x' hx') hx'b⟩
 
+include hfy in
 private theorem isClosed_C (b : β) (y : Y) :
     IsClosed (C X f b y) := by
   specialize hfy y.val y.prop
@@ -221,6 +221,7 @@ private theorem isClosed_C (b : β) (y : Y) :
   rw [lowerSemicontinuous_iff_isClosed_preimage] at hfy
   exact hfy b
 
+include hfy' in
 private theorem isPreconnected_C (b : β) (y : Y) :
     IsPreconnected (C X f b y) :=
   (hfy' y.val y.prop).isPreconnected_preimage
@@ -237,6 +238,7 @@ private theorem disjoint_C (a : E) (b : β) (y y' : Y)
   simp only [sup_le_iff]
   exact ⟨hx1, hx2⟩
 
+include hfx' in
 private theorem C_subset_union (b : β) (y y' : Y)
     (z : segment ℝ y.val y'.val) :
     C X f b z ⊆ C X f b y ∪ C X f b y' := fun x hx ↦ by
@@ -246,6 +248,7 @@ private theorem C_subset_union (b : β) (y y' : Y)
     specialize hfx' ⟨y.prop, inf_le_left⟩ ⟨y'.prop, inf_le_right⟩ z.prop
     exact le_trans hfx'.2 hx
 
+include cY hfy hfy' hfx' in
 private theorem C_subset_or
     (a : E) (b : β) (y y' : Y)
     (ha : ∀ x ∈ X, f a y ⊔ f a y' ≤ f x y ⊔ f x y')
@@ -259,6 +262,7 @@ private theorem C_subset_or
   rw [Set.disjoint_iff_inter_eq_empty.mp (disjoint_C X Y f a b y y' ha hb),
     Set.inter_empty]
 
+include cY hfy hfy' hfx' in
 private theorem C_subset_or'
     (a : E) (b : β) (y y' : Y)
     (ha : ∀ x ∈ X, f a y ⊔ f a y' ≤ f x y ⊔ f x y')
@@ -294,6 +298,7 @@ private theorem y_mem_J (b b' : β) (y y' : Y) (hbb' : b ≤ b') :
     (⟨y.val, left_mem_segment ℝ y.val y'.val⟩ : segment ℝ y.val y'.val) ∈ J X Y f b b' y y' :=
   monotone_C X Y f b b' y hbb'
 
+include ne_X kX hfx hfx' cY hfy hfy' in
 private theorem isClosed_J
     (a : E) (b b' : β) (y y' : Y)
     (ha : ∀ x ∈ X, f a y ⊔ f a y' ≤ f x y ⊔ f x y')
@@ -355,6 +360,7 @@ private theorem isClosed_J
     rintro ⟨hz, hz'⟩
     exact ⟨hz, ⟨le_of_lt hzt', hz'⟩⟩
 
+include ne_X kX hfx hfx' cY hfy hfy' in
 theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2 : y2 ∈ Y) {t : β}
     (ht : ∀ x ∈ X, t < f x y1 ⊔ f x y2) :
     ∃ y0 ∈ Y, ∀ x ∈ X, t < f x y0 := by
@@ -629,6 +635,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup_orig {y1 : F} (hy1 : y1 ∈ Y) {y2 : F}
   exact Convex.isPreconnected (convex_segment y1 y2)
 -/
 
+include ne_X cX cY kX hfx hfx' hfy hfy' in
 theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : β}
     (ht : ∀ x ∈ X, ∃ y ∈ s, t < f x y) :
     s ⊆ Y → ∃ y0 ∈ Y, ∀ x ∈ X, t < f x y0 := by
@@ -718,6 +725,7 @@ variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
 variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
   (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
 
+include ne_X cX cY kX hfx hfx' hfy hfy' in
 theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, f x y := by
   apply symm
   apply le_antisymm
@@ -776,7 +784,7 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
               intro hy
               rw [mem_iInter]
               intro hy'
-              apply Set.inter_subset_right X
+              apply Set.inter_subset_right
               rw [← (hv (⟨y, hy⟩ : Y)).2]
               simp only [Subtype.coe_mk, mem_sep_iff]
               exact hx y hy hy'
@@ -802,6 +810,7 @@ theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, 
       use v, v_closed
       simp only [← hv]; rfl
 
+include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' in
 /-- The Sion-von Neumann minimax theorem (saddle point form) -/
 theorem exists_saddlePointOn :
     ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
@@ -866,6 +875,7 @@ example : Continuous (Real.toEReal) := by exact continuous_coe_real_ereal
 
 /- Here, one will need compactness on Y — otherwise, no hope that
 the saddle point exists… -/
+include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' in
 /-- The minimax theorem, in the saddle point form -/
 theorem existsSaddlePointOn :
   ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
