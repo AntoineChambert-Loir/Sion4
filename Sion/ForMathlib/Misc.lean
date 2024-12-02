@@ -46,10 +46,10 @@ theorem clusterPt_principal_subtype_iff_frequently {α : Type _} [TopologicalSpa
     (hst : s ⊆ t) {J : Set s} {a : ↥s} :
     ClusterPt a (Filter.principal J) ↔ ∃ᶠ x in nhdsWithin a t, ∃ h : x ∈ s, (⟨x, h⟩ : s) ∈ J := by
   rw [nhdsWithin_eq_map_subtype_coe (hst a.prop), Filter.frequently_map,
-    clusterPt_principal_iff_frequently, inducing_subtype_val.nhds_eq_comap, Filter.frequently_comap,
-    inducing_subtype_val.nhds_eq_comap, Filter.frequently_comap, Subtype.coe_mk]
+    clusterPt_principal_iff_frequently, Topology.IsInducing.subtypeVal.nhds_eq_comap, Filter.frequently_comap,
+    Topology.IsInducing.subtypeVal.nhds_eq_comap, Filter.frequently_comap, Subtype.coe_mk]
   apply frequently_congr
-  apply eventually_of_forall
+  apply Eventually.of_forall
   intro x
   simp only [Subtype.coe_mk, SetCoe.exists, exists_and_left, exists_eq_left]
   exact ⟨fun ⟨h, hx⟩ => ⟨hst h, h, hx⟩, fun ⟨_, hx⟩ => hx⟩
