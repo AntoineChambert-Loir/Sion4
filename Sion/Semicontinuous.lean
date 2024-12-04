@@ -173,6 +173,11 @@ theorem LowerSemicontinuousOn.exists_forall_le_of_isCompact {s : Set α} (ne_s :
   filter_upwards [(hf a ha (f x) hxa).filter_mono (inf_le_inf_left _ hℱs),
     (hℱ x hx).filter_mono (inf_le_right : 𝓝 a ⊓ ℱ ≤ ℱ)] using fun y h₁ h₂ => not_le_of_lt h₁ h₂
 
+theorem LowerSemicontinuousOn.exists_isMinOn {s : Set α} (ne_s : s.Nonempty)
+    (hs : IsCompact s) (hf : LowerSemicontinuousOn f s) :
+    ∃ a ∈ s, IsMinOn f s a := 
+  hf.exists_forall_le_of_isCompact ne_s hs
+
 /-- A lower semicontinuous function is bounded above on a compact set. -/
 theorem LowerSemicontinuousOn.bddBelow_of_isCompact [Nonempty β] {s : Set α} (hs : IsCompact s)
     (hf : LowerSemicontinuousOn f s) : BddBelow (f '' s) := by
@@ -215,6 +220,11 @@ theorem UpperSemicontinuousOn.exists_forall_ge_of_isCompact {s : Set α} (ne_s :
     (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) : ∃ a ∈ s, ∀ x ∈ s, f x ≤ f a := by
   apply LowerSemicontinuousOn.exists_forall_le_of_isCompact (β := βᵒᵈ) ne_s hs
   exact hf
+
+theorem UpperSemicontinuousOn.exists_isMaxOn {s : Set α} (ne_s : s.Nonempty)
+    (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) :
+    ∃ a ∈ s, IsMaxOn f s a := 
+  hf.exists_forall_ge_of_isCompact ne_s hs
 
 /-- An upper semicontinuous function is bounded above on a compact set. -/
 theorem UpperSemicontinuousOn.bddAbove_of_isCompact [Nonempty β] {s : Set α}

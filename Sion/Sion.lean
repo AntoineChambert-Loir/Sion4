@@ -714,7 +714,167 @@ theorem exists_lt_iInf_of_lt_iInf_of_finite {s : Set F} (hs : s.Finite) {t : β}
 
 end
 
+section general
+
+variable (f : E → F → β)
+  [LinearOrder β] [DenselyOrdered β]
+
+variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
+  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
+
+variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
+  (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
+
+include ne_X cX cY kX hfx hfx' hfy hfy' in
+theorem minimax
+    (sup_y : E → β) (hsup_y : ∀ x ∈ X, IsLUB {f x y | y ∈ Y} (sup_y x)) 
+    (inf_sup : β) (hinf_sup : IsGLB {sup_y x | x ∈ X} inf_sup) 
+    (inf_x : F → β) (hinf_x : ∀ y ∈ Y, IsGLB {f x y | x ∈ X} (inf_x y)) 
+    (sup_inf : β) (hsup_inf : IsLUB {inf_x y | y ∈ Y} sup_inf) :
+    inf_sup = sup_inf := by
+  apply symm
+  apply le_antisymm
+  -- the obvious inequality
+  · rw [le_isGLB_iff hinf_sup, mem_lowerBounds]
+    rintro _ ⟨x, hx, rfl⟩
+    rw [isLUB_le_iff hsup_inf, mem_upperBounds]
+    rintro _ ⟨y, hy, rfl⟩
+    trans f x y
+    · exact (hinf_x y hy).1 ⟨x, hx, rfl⟩
+    · exact (hsup_y x hx).1 ⟨y, hy, rfl⟩
+  -- the delicate inequality
+  · rw [← forall_lt_iff_le]
+    intro t ht
+    let X' (y : F) := ({x ∈ X | f x y ≤ t} : Set E)
+
+    suffices hs : ∃ s : Set F, s ⊆ Y ∧ s.Finite ∧ (⋂ y ∈ s, X' y) = ∅ by
+      obtain ⟨s, hsY, hs, hes⟩ := hs
+      suffices hst : ∀ x ∈ X, ∃ y ∈ s, t < f x y by
+        obtain ⟨y0, hy0, ht0⟩ := exists_lt_iInf_of_lt_iInf_of_finite
+          X ne_X cX kX Y cY f hfx hfx' hfy hfy' hs hst hsY
+        simp only [lt_isLUB_iff hsup_inf, mem_setOf_eq, exists_exists_and_eq_and]
+        use y0, hy0
+        -- TODO : make automatic for semicontinuous
+        obtain ⟨a, ha, h⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact
+          ne_X kX (hfy y0 hy0)
+        apply lt_of_lt_of_le (ht0 a ha) 
+        rw [le_isGLB_iff (hinf_x y0 hy0), mem_lowerBounds]
+        simpa only [mem_setOf_eq, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+      intro x hx
+      by_contra hx'
+      push_neg at hx'
+      rw [Set.eq_empty_iff_forall_not_mem] at hes
+      apply hes x
+      simp only [mem_iInter, mem_setOf_eq, X', forall₂_and]
+      exact ⟨fun _ _ ↦ hx, hx'⟩
+    suffices hfyt : ∀ y : Y, ∃ vy : Set E, IsClosed vy ∧ X' y = X ∩ vy by
+      let v : Y → Set E := fun y ↦ Exists.choose (hfyt y)
+      have hv : ∀ y, IsClosed (v y) ∧ X' y = X ∩ v y := fun y ↦ (hfyt y).choose_spec
+      suffices hsZ : _ by
+        obtain ⟨s, hs⟩ := kX.elim_finite_subfamily_closed v (fun y => (hv y).1) hsZ
+        have hs_ne : s.Nonempty := by
+          rw [Finset.nonempty_iff_ne_empty]
+          intro hs_e
+          simp only [hs_e, Finset.not_mem_empty, iInter_of_empty, iInter_univ, inter_univ] at hs
+          rw [Set.nonempty_iff_ne_empty] at ne_X
+          exact ne_X hs
+        use (Subtype.val : Y → F) '' (s : Set Y)
+        constructor
+        · exact Subtype.coe_image_subset Y ↑s
+        · constructor
+          · apply s.finite_toSet.image
+          · rw [Set.eq_empty_iff_forall_not_mem] at hs ⊢
+            intro x hx
+            simp only [mem_image, Finset.mem_coe, SetCoe.exists, Subtype.coe_mk, exists_and_right,
+              exists_eq_right, iInf_eq_iInter, iInter_exists, mem_iInter, mem_sep_iff] at hx
+            apply hs x
+            rw [iInter_coe_set, mem_inter_iff, mem_iInter]
+            constructor
+            · obtain ⟨⟨j, hj⟩, hjs⟩ := hs_ne
+              exact (hx j hj hjs).1
+            · intro y
+              rw [mem_iInter]
+              intro hy
+              rw [mem_iInter]
+              intro hy'
+              apply Set.inter_subset_right
+              rw [← (hv (⟨y, hy⟩ : Y)).2]
+              simp only [Subtype.coe_mk, mem_sep_iff]
+              exact hx y hy hy'
+      · -- hsZ
+        rw [← not_le] at ht
+        rw [Set.eq_empty_iff_forall_not_mem]
+        intro x hx
+        apply ht
+        rw [mem_inter_iff, mem_iInter] at hx
+        trans sup_y x
+        · exact hinf_sup.1 ⟨x, hx.1, rfl⟩
+        · rw [isLUB_le_iff (hsup_y x hx.1), mem_upperBounds]
+          simp
+          intro y hy
+          suffices x ∈ X' y by
+            exact this.2
+          rw [(hv ⟨y, hy⟩).2]
+          exact ⟨hx.1, hx.2 ⟨y, hy⟩⟩
+    · -- hfyt
+      rintro ⟨y, hy⟩
+      specialize hfy y hy
+      simp_rw [lowerSemicontinuousOn_iff_preimage_Iic] at hfy
+      obtain ⟨v, v_closed, hv⟩ := hfy t
+      use v, v_closed
+      simp only [← hv]; rfl
+
+theorem _root_.IsMinOn.isGLB {α β : Type*} [Preorder β] {f : α → β} {s : Set α} {a :α}
+  (hfsa : IsMinOn f s a) : IsGLB {f x | x ∈ s} (f a) := sorry
+
+theorem _root_.IsMaxOn.isLUB {α β : Type*} [Preorder β]  {f : α → β} {s : Set α} {a :α}
+  (hfsa : IsMaxOn f s a) : IsLUB {f x | x ∈ s} (f a) := sorry
+
+include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' in
+/-- The Sion-von Neumann minimax theorem (saddle point form) -/
+theorem exists_saddlePointOn :
+    ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
+  -- Lemmes généraux de fonctions sci, scs qui remplacent
+  have hmin_x (y) (hy : y ∈ Y) : ∃ x ∈ X, IsMinOn (f · y) X x := (hfy y hy).exists_isMinOn ne_X kX
+  have hmax_y (x) (hx : x ∈ X) : ∃ y ∈ Y, IsMaxOn (f x) Y y := (hfx x hx).exists_isMaxOn ne_Y kY
+  choose! ξ ξ_mem ξ_min using hmin_x
+  choose! η η_mem η_max using hmax_y
+  suffices hlsc : LowerSemicontinuousOn (fun x => f x (η x)) X by
+    -- obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
+    obtain ⟨a, ha, ha'⟩ : ∃ a ∈ X, IsMinOn (fun x ↦ f x (η x)) X a := hlsc.exists_isMinOn ne_X kX
+      -- hlsc: cette fonction  est semicontinue inférieurement en x
+      -- X est compact, elle atteint son minimum
+    use a, ha
+    suffices husc : UpperSemicontinuousOn (fun y => f (ξ y) y) Y by
+      obtain ⟨b, hb, hb'⟩ : ∃ b ∈ Y, IsMaxOn (fun y ↦ f (ξ y) y) Y b := husc.exists_isMaxOn ne_Y kY 
+      -- obtain ⟨b, hb, hb'⟩ := UpperSemicontinuousOn.exists_iSup_of_isCompact ne_Y kY husc
+      use b, hb
+      intro x hx y hy
+      trans f a (η a)
+      · simp only [isMaxOn_iff] at η_max
+        exact η_max a ha y hy
+      trans f (ξ b) b
+      · apply le_of_eq
+        exact minimax X ne_X cX kX Y cY f hfx hfx' hfy hfy'
+          (fun x ↦ f x (η x)) (fun x hx ↦ (η_max x hx).isLUB) (f a (η a)) ha'.isGLB
+          (fun y ↦ f (ξ y) y) (fun y hy ↦ (ξ_min y hy).isGLB) (f (ξ b) b) hb'.isLUB 
+      · simp only [isMinOn_iff] at ξ_min
+        exact ξ_min b hb x hx
+    -- husc
+    intro y hy
+    apply upperSemicontinuousWithinAt_iInf₂ ne_X kX _ (hfy y hy)
+    intro x hx; exact hfx x hx y hy
+  -- hlsc
+  intro x hx
+  apply lowerSemicontinuousWithinAt_iSup₂ ne_Y kY _ (hfx x hx)
+  intro y hy; exact hfy y hy x hx
+
+
+end general
+
 section complete
+
+namespace Complete
 
 variable (f : E → F → β)
   [CompleteLinearOrder β] [DenselyOrdered β]
