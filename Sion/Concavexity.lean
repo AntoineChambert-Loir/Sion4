@@ -1,20 +1,24 @@
 import Mathlib.Analysis.Convex.Topology
 import Mathlib.Analysis.Convex.Quasiconvex
 import Mathlib.Topology.Semicontinuous
+import Mathlib.Analysis.Convex.PathConnected
 -- import Mathlib.Data.Real.EReal
 
 open Set
 
 section Composition
 
-variable {𝕜 E β : Type*} [OrderedSemiring 𝕜] [AddCommMonoid E]  [SMul 𝕜 E]
+variable {𝕜 E β : Type*} [Semiring 𝕜] [PartialOrder 𝕜]
+  -- [IsOrderedRing 𝕜]
+  [AddCommMonoid E]  [SMul 𝕜 E]
 
 variable {β γ : Type*} [LinearOrder β] [Preorder γ]
 
 variable {s : Set E} {f : E → β} {g : β → γ}
 
-theorem QuasiconvexOn.monotone_comp (hg : Monotone g) (hf : QuasiconvexOn 𝕜 s f) :
-  QuasiconvexOn 𝕜 s (g ∘ f) := by
+theorem QuasiconvexOn.monotone_comp
+    (hg : Monotone g) (hf : QuasiconvexOn 𝕜 s f) :
+    QuasiconvexOn 𝕜 s (g ∘ f) := by
   intro c
   intro x hx y hy
   simp only [Function.comp_apply, mem_setOf_eq] at hx hy
@@ -56,11 +60,12 @@ end Composition
 
 section Restriction
 
-variable {𝕜 E : Type _} [OrderedSemiring 𝕜] [AddCommMonoid E] [SMul 𝕜 E]
-variable {β : Type _} [Preorder β]
+variable {𝕜 E : Type*} [Semiring 𝕜] [PartialOrder 𝕜]
+  [AddCommMonoid E] [SMul 𝕜 E]
+variable {β : Type*} [Preorder β]
 variable {s : Set E} {f : E → β}
 
-theorem Set.sep_of_subset {α : Type _} {s t : Set α} {p : α → Prop} (hst : s ⊆ t) :
+theorem Set.sep_of_subset {α : Type*} {s t : Set α} {p : α → Prop} (hst : s ⊆ t) :
     {x ∈ s | p x} = {x ∈ t | p x} ∩ s := by
   ext x; simp only [mem_sep_iff, mem_inter_iff]
   rw [and_assoc, and_comm]
@@ -92,24 +97,28 @@ is bounded above and attains its upper bound.
 Maybe the result is false, I don't know.
 
 -/
-variable {E : Type _} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [TopologicalAddGroup E]
+variable {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [IsTopologicalAddGroup E]
   [ContinuousSMul ℝ E]
 
-variable {β : Type _} [Preorder β]
+variable {β : Type*} [Preorder β]
 variable {f : E → β}
 
 
 theorem QuasiconcaveOn.isPreconnected_preimage {s : Set E} {t : β}
     (hfc : QuasiconcaveOn ℝ s f) :
     IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Ici t : Set s) := by
-  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
+  rw [preimage_comp,
+    ← Topology.IsInducing.subtypeVal.isPreconnected_image,
+    image_preimage_eq_inter_range,
     Subtype.range_coe, inter_comm]
   exact (hfc t).isPreconnected
 
 theorem QuasiconvexOn.isPreconnected_preimage {s : Set E} {t : β}
     (hfc : QuasiconvexOn ℝ s f) :
     IsPreconnected (f ∘ (fun x ↦ ↑x) ⁻¹' Iic t : Set s) := by
-  rw [preimage_comp, ← inducing_subtype_val.isPreconnected_image, image_preimage_eq_inter_range,
+  rw [preimage_comp,
+    ← Topology.IsInducing.subtypeVal.isPreconnected_image,
+    image_preimage_eq_inter_range,
     Subtype.range_coe, inter_comm]
   exact (hfc t).isPreconnected
 
@@ -154,11 +163,11 @@ is bounded below and attains its lower bound.
 Maybe the result is false, I don't know.
 
 -/
-variable {E : Type _} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [TopologicalAddGroup E]
+variable {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [TopologicalAddGroup E]
   [ContinuousSMul ℝ E]
 
 
-variable {β : Type _} [OrderedAddCommMonoid β] {f : E → β}
+variable {β : Type*} [OrderedAddCommMonoid β] {f : E → β}
 
 /--
 A quasiconvex and upper semicontinuous function attains its lower bound on a nonempty compact set -/

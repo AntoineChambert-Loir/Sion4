@@ -1,4 +1,4 @@
-import Mathlib.Data.Real.EReal
+import Mathlib.Data.Real.Basic
 import Mathlib.Topology.Connected.Clopen
 
 /-!
