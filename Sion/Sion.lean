@@ -2,6 +2,7 @@
 -- import Mathlib.Data.Real.Basic
 
 import Mathlib.Analysis.Convex.Topology
+import Mathlib.Topology.Instances.EReal.Lemmas
 import Sion.Concavexity
 import Sion.ForMathlib.Misc
 import Sion.SaddlePoint
@@ -13,7 +14,7 @@ import Sion.Sublevel
 
 ## Statements
 
-`sion_exists` :
+`Sinon.exists_isSaddlePointOn` :
 Let X and Y be convex subsets of topological vector spaces E and F,
 X being moreover compact,
 and let f : X × Y → ℝ be a function such that
@@ -29,10 +30,20 @@ f is bilinear and E, F are finite dimensional.
 
 We follow the proof of Komiya (1988).
 
--- TODO :
-  * For the moment, the proof is only done when the target is EReal
-  * Replace ℝ with a general type
-  * Explicit the classical particular cases (in particular, von Neumann)
+## Remark on implementation
+  * The essential part of the proof holds for a function
+  `f : X → Y → β`, where `β` is a complete dense linear order.
+  * We have written part of it for just a dense linear order,
+
+  * On the other hand, if the theorem holds for such `β`,
+  it must hold for any linear order, for the reason that
+  any linear order embeds into a complete dense linear order.
+  However, this result does not seem to be known to Mathlib.
+  * When `β` is `ℝ`, one can use `Real.toEReal` and one gets a proof for `ℝ`.
+
+## TODO
+
+Explicit the classical particular cases (in particular, von Neumann)
 
 ## References
 
@@ -45,45 +56,17 @@ Pacific Journal of Mathematics 8 (1): 171‑76.
 - Komiya, Hidetoshi (1988). « Elementary Proof for Sion’s Minimax Theorem ».
 Kodai Mathematical Journal 11 (1). https://doi.org/10.2996/kmj/1138038812.
 
-
-## Comments on the proof
-
-For the moment, the proof is made difficult by the absence of results in mathlib
-pertaining to semicontinuous functions, and possibly to continuity properties
-of convex functions.
-
-One option would be to first do the proof for continuous functions
-by `sorry`ing all the results that we need in the semicontinuous case.
-
-
 -/
 
 open Set
 
-section
+namespace Sion
 
-variable {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [IsTopologicalAddGroup E]
-  [ContinuousSMul ℝ E]
-
-variable {F : Type*} [AddCommGroup F] [Module ℝ F] [TopologicalSpace F] [IsTopologicalAddGroup F]
-  [ContinuousSMul ℝ F]
-
-variable (X : Set E) (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
-
-variable (Y : Set F) (ne_Y : Y.Nonempty) (cY : Convex ℝ Y) (kY : IsCompact Y)
-
-end
-
-section EReal
-
-namespace ERealSion
-
-section
+section LinearOrder
 
 variable {E F : Type*} {β : Type*} [LinearOrder β]
     (X : Set E) (Y : Set F) (f : E → F → β)
 
--- private
 /-- The familywise sublevel sets of `f` -/
 def C (b : β) (z : F) : Set X :=
   (fun x => f x z) ∘ (fun x ↦ ↑x)⁻¹' Iic b
@@ -113,7 +96,6 @@ theorem y_mem_J  [AddCommGroup F] [Module ℝ F]
     {b b' : β} {y y' : Y} (hbb' : b ≤ b') :
     (⟨y.val, left_mem_segment ℝ y.val y'.val⟩ : segment ℝ y.val y'.val) ∈ J X Y f b b' y y' :=
   monotone_C _ hbb'
-
 
 -- private
 theorem disjoint_C {a : E} {b : β} {y y' : Y}
@@ -146,20 +128,6 @@ theorem isClosed_C [TopologicalSpace E]
   rw [lowerSemicontinuousOn_iff_restrict] at hfy
   rw [lowerSemicontinuous_iff_isClosed_preimage] at hfy
   exact hfy b
-
-section
-variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
-    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-    (ne_X : X.Nonempty) (kX : IsCompact X)
-    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (Function.swap f y) X)
-    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x ↦ f x y)
-
-variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
-  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
-  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (f x) Y)
-  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y (f x))
-
-end
 
 -- private
 theorem isPreconnected_C [TopologicalSpace E]
@@ -200,21 +168,6 @@ theorem C_subset_or [TopologicalSpace E] [AddCommGroup E] [IsTopologicalAddGroup
   rw [Set.disjoint_iff_inter_eq_empty.mp (disjoint_C ha hb),
     Set.inter_empty]
 
-section
-variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
-    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-    (ne_X : X.Nonempty) (kX : IsCompact X)
-    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
-    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
-
-variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
-  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
-    (cY : Convex ℝ Y) (kY : IsCompact Y)
-  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
-  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
-end
-
--- private
 theorem C_subset_or'
     [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
     [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
@@ -236,7 +189,6 @@ theorem C_subset_or'
   rw [Set.disjoint_iff_inter_eq_empty.mp (disjoint_C ha hb),
     Set.inter_empty]
 
-
 variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
     [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
     (ne_X : X.Nonempty) (kX : IsCompact X)
@@ -248,7 +200,6 @@ variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
     (cY : Convex ℝ Y) (kY : IsCompact Y)
     (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
     (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
-
 
 -- private
 include ne_X kX hfx hfx' cY hfy hfy' in
@@ -331,7 +282,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
 
   let J1 := J X Y f t t' ⟨y1, hy1⟩ ⟨y2, hy2⟩
   have mem_J1_iff : ∀ (z : F) (hz : z ∈ segment ℝ y1 y2),
-      ⟨z, hz⟩ ∈ J1 ↔ ERealSion.C X f t z ⊆ ERealSion.C X f t' y1 :=
+      ⟨z, hz⟩ ∈ J1 ↔ C X f t z ⊆ C X f t' y1 :=
     fun z _ ↦ by simp [J1, J]
   let φ : segment ℝ y1 y2 ≃ₜ segment ℝ y2 y1 := by
     apply Homeomorph.subtype (Homeomorph.refl F)
@@ -339,9 +290,9 @@ theorem exists_lt_iInf_of_lt_iInf_of_sup {y1 : F} (hy1 : y1 ∈ Y) {y2 : F} (hy2
     rw [segment_symm ℝ y2 y1]
     simp only [Homeomorph.refl_apply, id_eq]
   let J2 := φ ⁻¹' (J X Y f t t' ⟨y2, hy2⟩ ⟨y1, hy1⟩)
-  have mem_J2_iff : ∀ (z : F) (hz : z ∈ segment ℝ y1 y2),
-      ⟨z, hz⟩ ∈ J2 ↔ ERealSion.C X f t z ⊆ ERealSion.C X f t' y2 :=
-    fun z hz ↦ by simp [J2, J, φ, segment_symm ℝ y2 y1, hz]
+  have mem_J2_iff (z) (hz : z ∈ segment ℝ y1 y2) :
+      ⟨z, hz⟩ ∈ J2 ↔ C X f t z ⊆ C X f t' y2 := by
+    simp [J2, J, φ, segment_symm ℝ y2 y1, hz]
   have hJ1J2 : J1 ∩ J2 = ∅ := by
     rw [Set.eq_empty_iff_forall_notMem]
     simp only [mem_inter_iff, not_and]
@@ -451,42 +402,12 @@ theorem exists_lt_iInf_of_lt_iInf_of_finite
       rw [← not_le]
       exact fun h ↦ hx' ⟨hx, h⟩
 
-example
-    {t : β} (ht : ∀ x ∈ X, ∃ y ∈ Y, t < f x y) :
-    ∃ y0 ∈ Y, ∀ x ∈ X, t < f x y0 := by
-  /-  otherwise, forall y ∈ Y, there is ξ y ∈ X such that t ≥ f (ξ y) y
-      take a limit value (a, b) of (ξ y, y)
-      if f were continuous, t ≥ f a b
-
-
-    -/
-  sorry
-
-
-end
-
-section general
-
-variable {E F β : Type*} [LinearOrder β] [DenselyOrdered β]
-variable (X : Set E) (Y : Set F) (f : E → F → β)
-variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
-    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-    (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
-    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
-    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
-
-variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
-  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
-  (cY : Convex ℝ Y)
-  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
-  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
-
-
     -- hsup_y : ∀ x ∈ X, sup_y x = sup [y ∈ Y] f x y
     -- hinf_x : ∀ y ∈ Y, inf_x y = inf [x ∈ X] f x y
     -- hinf_sup : inf_sup = inf [x ∈ X] sup_y x
     -- hsup_inf : sup_inf = sup [y ∈ Y] inf_x y
 include ne_X cX cY kX hfx hfx' hfy hfy' in
+/-- A minimax theorem without completeness, using `IsGLB` and `IsULB`. -/
 theorem minimax
     (sup_y : E → β) (hsup_y : ∀ x ∈ X, IsLUB {f x y | y ∈ Y} (sup_y x))
     (inf_sup : β) (hinf_sup : IsGLB {sup_y x | x ∈ X} inf_sup)
@@ -535,7 +456,7 @@ theorem minimax
     specialize hc x hx
     apply not_le.mpr  htc (le_trans hc _)
     simpa [isLUB_le_iff (hsup_y x hx), mem_upperBounds] using H
-  rw [inter_leSublevelOn_empty_iff' ne_Y kX hfy] at this
+  rw [inter_leSublevelOn_empty_iff_exists_finset_inter ne_Y kX hfy] at this
   obtain ⟨s, hs⟩ := this
   have hs' (x) (hx : x ∈ X) :
       ∃ y ∈ Subtype.val '' (s : Set Y), t < f x y := by
@@ -557,7 +478,7 @@ theorem minimax
 variable (ne_Y : Y.Nonempty) (kY : IsCompact Y)
 include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' in
 /-- The Sion-von Neumann minimax theorem (saddle point form) -/
-theorem exists_saddlePointOn :
+theorem exists_isSaddlePointOn' :
     ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
   have hmax_y (x) (hx : x ∈ X) : ∃ y ∈ Y, IsMaxOn (f x) Y y := (hfx x hx).exists_isMaxOn ne_Y kY
   choose! η η_mem η_max using hmax_y
@@ -576,7 +497,7 @@ theorem exists_saddlePointOn :
     exact η_max a ha y hy
   trans f (ξ b) b
   · apply le_of_eq
-    apply minimax X Y f ne_X cX kX hfy hfy' cY hfx hfx'
+    apply minimax ne_X kX hfy hfy' cY hfx hfx' cX
       (fun x ↦ f x (η x))
       (fun x hx ↦ (η_max x hx).isLUB (η_mem x hx))
       (f a (η a))
@@ -588,198 +509,126 @@ theorem exists_saddlePointOn :
   · simp only [isMinOn_iff] at ξ_min
     exact ξ_min b hb x hx
 
-end general
+end LinearOrder
 
-section complete
+section CompleteLinearOrder
 
-namespace Complete
+variable {E F β : Type*} [CompleteLinearOrder β] [DenselyOrdered β]
+variable {X : Set E} {Y : Set F} {f : E → F → β}
+variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
+    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
+    (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
+    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E ↦ f x y) X)
+    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
 
-variable (f : E → F → β)
-  [CompleteLinearOrder β] [DenselyOrdered β]
-
-variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
+variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
+  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
+  (cY : Convex ℝ Y) (ne_Y : Y.Nonempty) (kY : IsCompact Y)
+  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
   (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
 
-variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
-  (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
-
 include ne_X cX cY kX hfx hfx' hfy hfy' in
-theorem minimax : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, f x y := by
+/-- A minimax theorem in inf-sup form, for complete linear orders. -/
+theorem minimax' : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X, f x y := by
   apply symm
   apply le_antisymm
   -- the obvious inclusion
   · exact iSup₂_iInf₂_le_iInf₂_iSup₂ X Y f
   -- the delicate inclusion
-  · rw [← forall_lt_iff_le]
-    intro t ht
-    let X' (y : F) := ({x ∈ X | f x y ≤ t} : Set E)
-
-    suffices hs : ∃ s : Set F, s ⊆ Y ∧ s.Finite ∧ (⋂ y ∈ s, X' y) = ∅ by
-      obtain ⟨s, hsY, hs, hes⟩ := hs
-      suffices hst : ∀ x ∈ X, ∃ y ∈ s, t < f x y by
-        obtain ⟨y0, hy0, ht0⟩ := exists_lt_iInf_of_lt_iInf_of_finite
-          X ne_X cX kX Y cY f hfx hfx' hfy hfy' hs hst hsY
-        simp only [lt_iSup_iff, exists_prop]
-        use y0, hy0
-        -- TODO : make automatic for semicontinuous
-        obtain ⟨a, ha, h⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact
-          ne_X kX (hfy y0 hy0)
-        exact lt_of_lt_of_le (ht0 a ha) (le_iInf₂_iff.mpr h)
-      intro x hx
-      by_contra hx'
-      push_neg at hx'
-      rw [Set.eq_empty_iff_forall_not_mem] at hes
-      apply hes x
-      simp only [mem_iInter, mem_setOf_eq, X', forall₂_and]
-      exact ⟨fun _ _ ↦ hx, hx'⟩
-    suffices hfyt : ∀ y : Y, ∃ vy : Set E, IsClosed vy ∧ X' y = X ∩ vy by
-      let v : Y → Set E := fun y ↦ Exists.choose (hfyt y)
-      have hv : ∀ y, IsClosed (v y) ∧ X' y = X ∩ v y := fun y ↦ (hfyt y).choose_spec
-      suffices hsZ : _ by
-        obtain ⟨s, hs⟩ := kX.elim_finite_subfamily_closed v (fun y => (hv y).1) hsZ
-        have hs_ne : s.Nonempty := by
-          rw [Finset.nonempty_iff_ne_empty]
-          intro hs_e
-          simp only [hs_e, Finset.not_mem_empty, iInter_of_empty, iInter_univ, inter_univ] at hs
-          rw [Set.nonempty_iff_ne_empty] at ne_X
-          exact ne_X hs
-        use (Subtype.val : Y → F) '' (s : Set Y)
-        constructor
-        · exact Subtype.coe_image_subset Y ↑s
-        · constructor
-          · apply s.finite_toSet.image
-          · rw [Set.eq_empty_iff_forall_not_mem] at hs ⊢
-            intro x hx
-            simp only [mem_image, Finset.mem_coe, SetCoe.exists, Subtype.coe_mk, exists_and_right,
-              exists_eq_right, iInf_eq_iInter, iInter_exists, mem_iInter, mem_sep_iff] at hx
-            apply hs x
-            rw [iInter_coe_set, mem_inter_iff, mem_iInter]
-            constructor
-            · obtain ⟨⟨j, hj⟩, hjs⟩ := hs_ne
-              exact (hx j hj hjs).1
-            · intro y
-              rw [mem_iInter]
-              intro hy
-              rw [mem_iInter]
-              intro hy'
-              apply Set.inter_subset_right
-              rw [← (hv (⟨y, hy⟩ : Y)).2]
-              simp only [Subtype.coe_mk, mem_sep_iff]
-              exact hx y hy hy'
-      · -- hsZ
-        rw [← not_le] at ht
-        rw [Set.eq_empty_iff_forall_not_mem]
-        intro x hx
-        apply ht
-        rw [mem_inter_iff, mem_iInter] at hx
-        apply iInf₂_le_of_le x _ _
-        exact hx.1
-        simp only [iSup_le_iff]
-        intro y hy
-        suffices x ∈ X' y by
-          exact this.2
-        rw [(hv ⟨y, hy⟩).2]
-        exact ⟨hx.1, hx.2 ⟨y, hy⟩⟩
-    · -- hfyt
-      rintro ⟨y, hy⟩
-      specialize hfy y hy
-      simp_rw [lowerSemicontinuousOn_iff_preimage_Iic] at hfy
-      obtain ⟨v, v_closed, hv⟩ := hfy t
-      use v, v_closed
-      simp only [← hv]; rfl
+  rcases eq_empty_or_nonempty Y with ⟨rfl⟩ | ne_Y
+  · simp [biInf_const ne_X]
+  rw [← forall_lt_iff_le]
+  intro t ht
+  have : ⋂ y ∈ Y, LeSublevelOn X (fun x ↦ f x y) t = ∅ := by
+    rw [inter_leSublevelOn_empty_iff ne_Y]
+    intro x hx
+    by_contra! H
+    rw [lt_iInf_iff] at ht
+    obtain ⟨c, htc, hc⟩ := ht
+    apply not_le.mpr htc
+    simp only [le_iInf_iff] at hc
+    apply le_trans (hc x hx)
+    simpa only [iSup_le_iff]
+  rw [inter_leSublevelOn_empty_iff_exists_finset_inter ne_Y kX hfy] at this
+  obtain ⟨s, hs⟩ := this
+  have hs' (x) (hx : x ∈ X) :
+      ∃ y ∈ Subtype.val '' (s : Set Y), t < f x y := by
+    obtain ⟨i, hi, hi'⟩ := hs x hx
+    use i.val
+    simp [hi, hi']
+  choose y0 hy0 ht0 using exists_lt_iInf_of_lt_iInf_of_finite
+        ne_X kX hfy hfy' cY hfx hfx' cX
+        (t := t)
+        (toFinite _) (Subtype.coe_image_subset Y ↑s)
+  simp only [lt_iSup_iff]
+  use y0 hs', hy0 hs'
+  specialize ht0 hs'
+  obtain ⟨a, ha, h⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact
+        ne_X kX (hfy (y0  hs') (hy0 hs'))
+  apply lt_of_lt_of_le (ht0 a ha)
+  simpa only [le_iInf_iff]
 
 include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' in
-/-- The Sion-von Neumann minimax theorem (saddle point form) -/
-theorem exists_saddlePointOn :
+/-- The Sion-von Neumann minimax theorem (saddle point form),
+case of complete linear orders. -/
+theorem exists_saddlePointOn' :
     ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
-  suffices hlsc : LowerSemicontinuousOn (fun x => ⨆ y ∈ Y, f x y) X by
-    obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
-    use a, ha
-    suffices husc : UpperSemicontinuousOn (fun y => ⨅ x ∈ X, f x y) Y by
-      obtain ⟨b, hb, hb'⟩ := UpperSemicontinuousOn.exists_iSup_of_isCompact ne_Y kY husc
-      use b, hb
-      rw [isSaddlePointOn_iff' ha hb]
-      rw [ha']
-      rw [minimax X ne_X cX kX Y cY f hfx hfx' hfy hfy']
-      rw [← hb']
-    -- husc
+  have hlsc : LowerSemicontinuousOn (fun x => ⨆ y ∈ Y, f x y) X := by
+    intro x hx
+    apply lowerSemicontinuousWithinAt_iSup₂ ne_Y kY _ (hfx x hx)
+    intro y hy; exact hfy y hy x hx
+  have husc : UpperSemicontinuousOn (fun y => ⨅ x ∈ X, f x y) Y := by
     intro y hy
     apply upperSemicontinuousWithinAt_iInf₂ ne_X kX _ (hfy y hy)
     intro x hx; exact hfx x hx y hy
-  -- hlsc
-  intro x hx
-  apply lowerSemicontinuousWithinAt_iSup₂ ne_Y kY _ (hfx x hx)
-  intro y hy; exact hfy y hy x hx
+  obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
+  obtain ⟨b, hb, hb'⟩ := UpperSemicontinuousOn.exists_iSup_of_isCompact ne_Y kY husc
+  use a, ha, b, hb
+  rw [isSaddlePointOn_iff' ha hb, ha', minimax' ne_X cX kX hfy hfy' cY hfx hfx', ← hb']
 
-end complete
-
-end ERealSion
-
-end EReal
-
--- JUSQU'ICI, TOUT VA BIEN…
--- IL RESTE À TRAITER LE CAS DES FONCTIONS À VALEURS RÉELLES
--- TODO : Remplacer ℝ et EReal par un type général convenable
+end CompleteLinearOrder
 
 section Real
 
-namespace Sion
+variable {E F : Type*}
+variable {X : Set E} {Y : Set F} {f : E → F → ℝ}
+variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
+    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
+    (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
+    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E ↦ f x y) X)
+    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
 
-variable (f : E → F → ℝ)
-
-variable (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
+variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
+  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
+  (cY : Convex ℝ Y) (ne_Y : Y.Nonempty) (kY : IsCompact Y)
+  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
   (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
 
-variable (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E => f x y) X)
-  (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
-
-/- The theorem is probably wrong without the additional hypothesis
-that Y is compact. Indeed, if the image of (λ y, f x y) is not bounded above,
-then supr is defined as 0, while the theorem should interpret it as infinity.
-
-Possibilities :
-
-- add hypotheses that guarantee the bdd_above condition
-- replace the infimum on (x : X) by the infimum on the subtype of X
-consisting of x such that (λ y, f x y) is bounded above.
-(If that subtype is empty, the left hand side is +infinity for mathematicians,
-but 0 for Lean… what about the rhs?)
-
--/
-
-example : Monotone (Real.toEReal) := EReal.coe_strictMono.monotone
-
-example : Continuous (Real.toEReal) := by exact continuous_coe_real_ereal
-
-/- Here, one will need compactness on Y — otherwise, no hope that
-the saddle point exists… -/
 include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' in
 /-- The minimax theorem, in the saddle point form -/
-theorem existsSaddlePointOn :
+theorem exists_isSaddlePointOn :
   ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
   -- Reduce to the cae of EReal-valued functions
   let φ : E → F → EReal := fun x y ↦ (f x y).toEReal
   -- suffices : ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y φ a b
-  have hφx : ∀ x ∈ X, UpperSemicontinuousOn (fun y ↦ φ x y) Y := fun x hx ↦
-    continuous_coe_real_ereal.comp_upperSemicontinuousOn (hfx x hx) EReal.coe_strictMono.monotone
-  have hφx' : ∀ (x : E), x ∈ X → QuasiconcaveOn ℝ Y fun y ↦ φ x y := fun x hx ↦
-    by convert (hfx' x hx).monotone_comp EReal.coe_strictMono.monotone
-  have hφy : ∀ (y : F), y ∈ Y → LowerSemicontinuousOn (fun x ↦ φ x y) X := fun y hy ↦
-    continuous_coe_real_ereal.comp_lowerSemicontinuousOn (hfy y hy) EReal.coe_strictMono.monotone
-  have hφy': ∀ (y : F), y ∈ Y → QuasiconvexOn ℝ X fun x ↦ φ x y := fun y hy ↦
-    by convert (hfy' y hy).monotone_comp EReal.coe_strictMono.monotone
+  have hφx (x) (hx : x ∈ X) : UpperSemicontinuousOn (fun y ↦ φ x y) Y := by
+    convert Continuous.comp_upperSemicontinuousOn continuous_coe_real_ereal (hfx x hx) EReal.coe_strictMono.monotone
+  have hφx' (x) (hx : x ∈ X) : QuasiconcaveOn ℝ Y fun y ↦ φ x y := by
+    convert (hfx' x hx).monotone_comp EReal.coe_strictMono.monotone
+  have hφy (y) (hy : y ∈ Y) : LowerSemicontinuousOn (fun x ↦ φ x y) X := by
+    convert Continuous.comp_lowerSemicontinuousOn continuous_coe_real_ereal (hfy y hy) EReal.coe_strictMono.monotone
+  have hφy' (y) (hy : y ∈ Y) : QuasiconvexOn ℝ X fun x ↦ φ x y := by
+    convert (hfy' y hy).monotone_comp EReal.coe_strictMono.monotone
   obtain ⟨a, ha, b, hb, hab⟩ :=
-    ERealSion.exists_saddlePointOn X ne_X cX kX Y ne_Y cY kY φ hφx hφx' hφy hφy'
+    exists_isSaddlePointOn' ne_X kX hφy hφy' cY kY hφx hφx' cX ne_Y
   use a, ha, b, hb
   intro x hx y hy
   simp only [← EReal.coe_le_coe_iff]
   exact hab x hx y hy
 
-#print axioms existsSaddlePointOn
+end Real
 
 end Sion
-
-end Real
 
 #exit
 

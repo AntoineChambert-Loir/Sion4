@@ -91,7 +91,7 @@ theorem isCompact_leSublevelOn [TopologicalSpace E] (hf : LowerSemicontinuousOn 
 
 -- We need a better elimination theorem for intersections in a compact subset
 -- which are closed in the compact subset and not necessarily in the ambient space
-theorem inter_leSublevelOn_empty_iff_exists_finite_inter {ι : Type*} {f : ι → E → β} {I : Set ι}
+theorem inter_leSublevelOn_empty_iff_exists_finset_inter {ι : Type*} {f : ι → E → β} {I : Set ι}
     (ne_I : I.Nonempty)
     [TopologicalSpace E] (ks : IsCompact s)
     (hfi : ∀ i ∈ I, LowerSemicontinuousOn (f i) s) :
