@@ -391,6 +391,54 @@ end CompleteLinearOrder
 
 end Semicontinuity
 
+open Set
+theorem _root_.IsMinOn.isGLB {α β : Type*} [Preorder β] {f : α → β} {s : Set α} {a :α}
+    (ha : a ∈ s) (hfsa : IsMinOn f s a) :
+    IsGLB {f x | x ∈ s} (f a) := by
+  rw [isGLB_iff_le_iff]
+  intro b
+  simp only [mem_lowerBounds, mem_setOf_eq, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+  exact ⟨fun hba x hx ↦ le_trans hba (hfsa hx), fun hb ↦ hb a ha⟩
+
+theorem _root_.IsMaxOn.isLUB {α β : Type*} [Preorder β]  {f : α → β} {s : Set α} {a :α}
+    (ha : a ∈ s) (hfsa : IsMaxOn f s a) :
+    IsLUB {f x | x ∈ s} (f a) := by
+  rw [isLUB_iff_le_iff]
+  intro b
+  simp only [mem_upperBounds, mem_setOf_eq, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+  exact ⟨fun hba x hx ↦ le_trans (hfsa hx) hba, fun hb ↦ hb a ha⟩
+
+theorem _root_.upperSemicontinuousOn_of_forall_isMinOn_and_mem
+    {ι : Type*} {E : Type*} [TopologicalSpace E]
+    {β : Type*} [Preorder β]
+    {f : ι → E → β} {I : Set ι} {s : Set E}
+    (hfs : ∀ i ∈ I, UpperSemicontinuousOn (f i) s)
+    {m : E → ι}
+    (m_mem : ∀ x ∈ s, m x ∈ I)
+    (m_min : ∀ x ∈ s, IsMinOn (fun i ↦ f i x) I (m x)) :
+    UpperSemicontinuousOn (fun x ↦ f (m x) x) s := by
+  intro y hy b hb
+  apply Filter.Eventually.mp <| hfs (m y) (m_mem y hy) y hy b hb
+  apply eventually_nhdsWithin_of_forall
+  intro z hz
+  apply lt_of_le_of_lt (m_min z hz (m_mem y hy))
+
+theorem _root_.lowerSemicontinuousOn_of_forall_isMaxOn_and_mem
+    {ι : Type*} {E : Type*} [TopologicalSpace E]
+    {β : Type*} [Preorder β]
+    {f : ι → E → β} {I : Set ι} {s : Set E}
+    (hfy : ∀ i ∈ I, LowerSemicontinuousOn (f i) s)
+    {M : E → ι}
+    (M_mem : ∀ x ∈ s, M x ∈ I)
+    (M_max : ∀ x ∈ s, IsMaxOn (fun y ↦ f y x) I (M x)) :
+    LowerSemicontinuousOn (fun x ↦ f (M x) x) s := by
+  intro x hx b hb
+  apply Filter.Eventually.mp <| hfy (M x) (M_mem x hx) x hx b hb
+  apply eventually_nhdsWithin_of_forall
+  intro z hz h
+  exact lt_of_lt_of_le h (M_max z hz (M_mem x hx))
+
+
 #exit
 
 section Junk
