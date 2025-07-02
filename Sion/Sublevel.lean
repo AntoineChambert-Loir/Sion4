@@ -9,10 +9,17 @@ section LE
 
 variable [LE β]
 
+/-- The sublevel sets of `f`. -/
 def LeSublevel (f : E → β) (b : β) : Set E := { x | f x ≤ b }
 
-/-- The sublevel set of `f` on `s`. -/
+/-- The sublevel sets of `f` on `s`. -/
 def LeSublevelOn (s : Set E) (f : E → β) (b : β) : Set E := { x ∈ s | f x ≤ b }
+
+/-- The overlevel sets of `f`. -/
+def LeOverlevel (f : E → β) (b : β) : Set E := { x | b ≤ f x }
+
+/-- The overlevel sets of `f` on `s`. -/
+def LeOverlevelOn (s : Set E) (f : E → β) (b : β) : Set E := { x ∈ s | b ≤ f x }
 
 variable {s : Set E} {f : E → β} {b : β}
 
