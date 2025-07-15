@@ -1,6 +1,6 @@
-import Mathlib.Topology.Semicontinuous
-import Mathlib.Topology.Order.LowerUpperTopology
-
+import Mathlib
+-- import Mathlib.Topology.Semicontinuous
+-- import Mathlib.Topology.Order.LowerUpperTopology
 section Semicontinuity
 
 /-!
@@ -49,17 +49,30 @@ open scoped Filter Topology
 
 open Set Filter
 
-section LinearOrder
+section Preorder
 
-universe u v
+open Set
 
-variable {α : Type u} {β : Type v} [TopologicalSpace α] {f : α → β}
+variable {a β : Type*} [Preorder β] {f : α → β} {s : Set α} {a : α}
 
-variable [LinearOrder β]
+-- move to [Mathlib.Order.Filter.Extr]
+theorem _root_.IsMinOn.isGLB (ha : a ∈ s) (hfsa : IsMinOn f s a) :
+    IsGLB {f x | x ∈ s} (f a) := by
+  rw [isGLB_iff_le_iff]
+  intro b
+  simp only [mem_lowerBounds, mem_setOf_eq, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+  exact ⟨fun hba x hx ↦ le_trans hba (hfsa hx), fun hb ↦ hb a ha⟩
 
-section LowerSemicontinuous
+theorem _root_.IsMaxOn.isLUB (ha : a ∈ s) (hfsa : IsMaxOn f s a) :
+    IsLUB {f x | x ∈ s} (f a) := by
+  rw [isLUB_iff_le_iff]
+  intro b
+  simp only [mem_upperBounds, mem_setOf_eq, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+  exact ⟨fun hba x hx ↦ le_trans (hfsa hx) hba, fun hb ↦ hb a ha⟩
 
-theorem LowerSemicontinuousWithinAt.congr {f g : α → β} {s : Set α} {a : α}
+variable [TopologicalSpace α]
+
+theorem LowerSemicontinuousWithinAt.congr
     (has : a ∈ s) (hfg : ∀ᶠ x in nhdsWithin a s, f x = g x) :
     LowerSemicontinuousWithinAt f s a ↔ LowerSemicontinuousWithinAt g s a := by
   unfold LowerSemicontinuousWithinAt
@@ -72,92 +85,134 @@ theorem LowerSemicontinuousWithinAt.congr {f g : α → β} {s : Set α} {a : α
   intro x hx
   rw [hx]
 
-theorem LowerSemicontinuousWithinAt.sup {g : α → β} {s : Set α} {a : α}
+theorem UpperSemicontinuousWithinAt.congr
+    (has : a ∈ s) (hfg : ∀ᶠ x in nhdsWithin a s, f x = g x) :
+    UpperSemicontinuousWithinAt f s a ↔ UpperSemicontinuousWithinAt g s a :=
+  LowerSemicontinuousWithinAt.congr (β := βᵒᵈ) has hfg
+
+variable {γ : Type*} [TopologicalSpace γ] {g : γ → α} {x : γ} {t : Set γ}
+
+theorem LowerSemicontinuousWithinAt.comp
+    (hf : LowerSemicontinuousWithinAt f s (g x)) (hg : ContinuousWithinAt g t x)
+    (hg' : MapsTo g t s) :
+    LowerSemicontinuousWithinAt (f ∘ g) t x := fun b hb ↦
+  (hg.tendsto_nhdsWithin hg').eventually (hf b hb)
+
+theorem LowerSemicontinuousAt.comp
+    (hf : LowerSemicontinuousAt f (g x)) (hg : ContinuousAt g x) :
+    LowerSemicontinuousAt (f ∘ g) x := fun b hb ↦
+  hg.eventually (hf b hb)
+
+theorem LowerSemicontinuousOn.comp
+    (hf : LowerSemicontinuousOn f s) (hg : ContinuousOn g t) (hg' : MapsTo g t s) :
+    LowerSemicontinuousOn (f ∘ g) t := fun x hx ↦
+  (hf (g x) (hg' hx)).comp (hg x hx) hg'
+
+theorem LowerSemicontinuous.comp
+    (hf : LowerSemicontinuous f) (hg : Continuous g) : LowerSemicontinuous (f ∘ g) := fun x ↦
+  (hf (g x)).comp hg.continuousAt
+
+theorem lowerSemicontinuousOn_iff_restrict :
+    LowerSemicontinuousOn f s ↔ LowerSemicontinuous (s.restrict f) := by
+  rw [LowerSemicontinuousOn, LowerSemicontinuous, SetCoe.forall]
+  refine' forall₂_congr fun a ha ↦ forall₂_congr fun b _ ↦ _
+  simp only [nhdsWithin_eq_map_subtype_coe ha, eventually_map, restrict]
+
+theorem lowerSemicontinuousOn_iff_preimage_Ioi :
+    LowerSemicontinuousOn f s ↔ ∀ b, ∃ u, IsOpen u ∧ s ∩ f ⁻¹' Set.Ioi b = s ∩ u := by
+  simp only [lowerSemicontinuousOn_iff_restrict, restrict_eq,
+    lowerSemicontinuous_iff_isOpen_preimage, preimage_comp, isOpen_induced_iff,
+    Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
+
+variable {ι : Type*} {f : ι → α → β} {I : Set ι}
+
+theorem lowerSemicontinuousOn_of_forall_isMaxOn_and_mem
+    (hfy : ∀ i ∈ I, LowerSemicontinuousOn (f i) s)
+    {M : α → ι}
+    (M_mem : ∀ x ∈ s, M x ∈ I)
+    (M_max : ∀ x ∈ s, IsMaxOn (fun y ↦ f y x) I (M x)) :
+    LowerSemicontinuousOn (fun x ↦ f (M x) x) s := by
+  intro x hx b hb
+  apply Filter.Eventually.mp <| hfy (M x) (M_mem x hx) x hx b hb
+  apply eventually_nhdsWithin_of_forall
+  intro z hz h
+  exact lt_of_lt_of_le h (M_max z hz (M_mem x hx))
+
+theorem upperSemicontinuousOn_of_forall_isMinOn_and_mem
+    (hfy : ∀ i ∈ I, UpperSemicontinuousOn (f i) s)
+    {m : α → ι}
+    (m_mem : ∀ x ∈ s, m x ∈ I)
+    (m_min : ∀ x ∈ s, IsMinOn (fun i ↦ f i x) I (m x)) :
+    UpperSemicontinuousOn (fun x ↦ f (m x) x) s :=
+  lowerSemicontinuousOn_of_forall_isMaxOn_and_mem (β := βᵒᵈ) hfy m_mem m_min
+
+end Preorder
+
+section LinearOrder
+
+variable {α : Type*} {β : Type*} [TopologicalSpace α] [LinearOrder β]
+  {f g : α → β} {s : Set α} {a : α}
+
+section LowerSemicontinuous
+
+theorem lowerSemicontinuousOn_iff_preimage_Iic :
+    LowerSemicontinuousOn f s ↔ ∀ b, ∃ v : Set α, IsClosed v ∧ s ∩ f ⁻¹' Set.Iic b = s ∩ v := by
+  simp only [lowerSemicontinuousOn_iff_restrict, restrict_eq,
+    lowerSemicontinuous_iff_isClosed_preimage, preimage_comp, isClosed_induced_iff,
+    Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
+
+theorem LowerSemicontinuousWithinAt.sup
     (hf : LowerSemicontinuousWithinAt f s a) (hg : LowerSemicontinuousWithinAt g s a) :
     LowerSemicontinuousWithinAt (fun x ↦ f x ⊔ g x) s a := by
   intro b hb
   simp only [lt_sup_iff] at hb ⊢
-  cases' hb with hb hb
+  rcases hb with hb | hb
   · filter_upwards [hf b hb] with x using Or.intro_left _
   · filter_upwards [hg b hb] with x using Or.intro_right _
 
-theorem LowerSemicontinuousAt.sup {g : α → β} {a : α} (hf : LowerSemicontinuousAt f a)
-    (hg : LowerSemicontinuousAt g a) :
+theorem LowerSemicontinuousAt.sup
+    (hf : LowerSemicontinuousAt f a) (hg : LowerSemicontinuousAt g a) :
     LowerSemicontinuousAt (fun x ↦ f x ⊔ g x) a := by
   rw [← lowerSemicontinuousWithinAt_univ_iff] at *
   exact hf.sup hg
 
-theorem LowerSemicontinuousOn.sup {s : Set α} {g : α → β} (hf : LowerSemicontinuousOn f s)
-    (hg : LowerSemicontinuousOn g s) :
+theorem LowerSemicontinuousOn.sup
+    (hf : LowerSemicontinuousOn f s) (hg : LowerSemicontinuousOn g s) :
     LowerSemicontinuousOn (fun x ↦ f x ⊔ g x) s := fun a ha ↦
   (hf a ha).sup (hg a ha)
 
-theorem LowerSemicontinuous.sup {g : α → β} (hf : LowerSemicontinuous f)
-    (hg : LowerSemicontinuous g) :
+theorem LowerSemicontinuous.sup
+    (hf : LowerSemicontinuous f) (hg : LowerSemicontinuous g) :
     LowerSemicontinuous fun x ↦ f x ⊔ g x := fun a ↦
   (hf a).sup (hg a)
 
-theorem LowerSemicontinuousWithinAt.inf {g : α → β} {s : Set α} {a : α}
+theorem LowerSemicontinuousWithinAt.inf
     (hf : LowerSemicontinuousWithinAt f s a) (hg : LowerSemicontinuousWithinAt g s a) :
     LowerSemicontinuousWithinAt (fun x ↦ f x ⊓ g x) s a := by
   intro b hb
   simp only [lt_inf_iff] at hb ⊢
   exact Eventually.and (hf b hb.1) (hg b hb.2)
 
-theorem LowerSemicontinuousAt.inf {g : α → β} {a : α} (hf : LowerSemicontinuousAt f a)
-    (hg : LowerSemicontinuousAt g a) :
+theorem LowerSemicontinuousAt.inf
+    (hf : LowerSemicontinuousAt f a) (hg : LowerSemicontinuousAt g a) :
     LowerSemicontinuousAt (fun x ↦ f x ⊓ g x) a := by
   rw [← lowerSemicontinuousWithinAt_univ_iff] at *
   exact hf.inf hg
 
-theorem LowerSemicontinuousOn.inf {g : α → β} {s : Set α} (hf : LowerSemicontinuousOn f s)
-    (hg : LowerSemicontinuousOn g s) :
+theorem LowerSemicontinuousOn.inf
+    (hf : LowerSemicontinuousOn f s) (hg : LowerSemicontinuousOn g s) :
     LowerSemicontinuousOn (fun x ↦ f x ⊓ g x) s := fun a ha ↦
   (hf a ha).inf (hg a ha)
 
-theorem LowerSemicontinuous.inf {g : α → β} (hf : LowerSemicontinuous f)
-    (hg : LowerSemicontinuous g) : LowerSemicontinuous fun x ↦ f x ⊓ g x := fun a ↦
+theorem LowerSemicontinuous.inf (hf : LowerSemicontinuous f)
+    (hg : LowerSemicontinuous g) :
+    LowerSemicontinuous fun x ↦ f x ⊓ g x := fun a ↦
   (hf a).inf (hg a)
 
--- TODO : add same for upper_semicontinuous
-theorem LowerSemicontinuousAt.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α} {x : γ}
-    (hf : LowerSemicontinuousAt f (g x)) (hg : ContinuousAt g x) :
-    LowerSemicontinuousAt (f ∘ g) x := fun b hb ↦ hg.eventually (hf b hb)
-
-theorem LowerSemicontinuous.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α}
-    (hf : LowerSemicontinuous f) (hg : Continuous g) : LowerSemicontinuous (f ∘ g) := fun x ↦
-  (hf (g x)).comp hg.continuousAt
-
-theorem LowerSemicontinuousWithinAt.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α} {s : Set γ}
-    {t : Set α} {x : γ} (hf : LowerSemicontinuousWithinAt f t (g x)) (hg : ContinuousWithinAt g s x)
-    (hg' : MapsTo g s t) : LowerSemicontinuousWithinAt (f ∘ g) s x := fun b hb ↦
-  (hg.tendsto_nhdsWithin hg').eventually (hf b hb)
-
-theorem LowerSemicontinuousOn.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α} {s : Set γ}
-    {t : Set α} (hf : LowerSemicontinuousOn f t) (hg : ContinuousOn g s) (hg' : MapsTo g s t) :
-    LowerSemicontinuousOn (f ∘ g) s := fun x hx ↦ (hf (g x) (hg' hx)).comp (hg x hx) hg'
-
-theorem lowerSemicontinuousOn_iff_restrict {s : Set α} :
-    LowerSemicontinuousOn f s ↔ LowerSemicontinuous (s.restrict f) := by
-  rw [LowerSemicontinuousOn, LowerSemicontinuous, SetCoe.forall]
-  refine' forall₂_congr fun a ha ↦ forall₂_congr fun b _ ↦ _
-  simp only [nhdsWithin_eq_map_subtype_coe ha, eventually_map, restrict]
-
-theorem lowerSemicontinuousOn_iff_preimage_Ioi {s : Set α} :
-    LowerSemicontinuousOn f s ↔ ∀ b, ∃ u : Set α, IsOpen u ∧ s ∩ f ⁻¹' Set.Ioi b = s ∩ u := by
-  simp only [lowerSemicontinuousOn_iff_restrict, restrict_eq,
-    lowerSemicontinuous_iff_isOpen_preimage, preimage_comp, isOpen_induced_iff,
-    Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
-
-theorem lowerSemicontinuousOn_iff_preimage_Iic {s : Set α} :
-    LowerSemicontinuousOn f s ↔ ∀ b, ∃ v : Set α, IsClosed v ∧ s ∩ f ⁻¹' Set.Iic b = s ∩ v := by
-  simp only [lowerSemicontinuousOn_iff_restrict, restrict_eq,
-    lowerSemicontinuous_iff_isClosed_preimage, preimage_comp, isClosed_induced_iff,
-    Subtype.preimage_coe_eq_preimage_coe_iff, eq_comm]
-
-/-- A lower semicontinuous function attains its lower bound on a nonempty compact set -/
+/-- A lower semicontinuous function attains its lower bound on a nonempty compact set. -/
 theorem LowerSemicontinuousOn.exists_forall_le_of_isCompact {s : Set α} (ne_s : s.Nonempty)
-    (hs : IsCompact s) (hf : LowerSemicontinuousOn f s) : ∃ a ∈ s, ∀ x ∈ s, f a ≤ f x := by
+    (hs : IsCompact s) (hf : LowerSemicontinuousOn f s) :
+    ∃ a ∈ s, ∀ x ∈ s, f a ≤ f x := by
   haveI : Nonempty α := ⟨ne_s.choose⟩
   haveI : Nonempty s := ⟨⟨ne_s.choose, ne_s.choose_spec⟩⟩
   let φ : β → Filter α := fun b ↦ 𝓟 (s ∩ f ⁻¹' Iic b)
@@ -184,12 +239,13 @@ theorem LowerSemicontinuousOn.exists_forall_le_of_isCompact {s : Set α} (ne_s :
   filter_upwards [(hf a ha (f x) hxa).filter_mono (inf_le_inf_left _ hℱs),
     (hℱ x hx).filter_mono (inf_le_right : 𝓝 a ⊓ ℱ ≤ ℱ)] using fun y h₁ h₂ ↦ not_le_of_gt h₁ h₂
 
+/-- A lower semicontinuous function attains its lower bound on a nonempty compact set. -/
 theorem LowerSemicontinuousOn.exists_isMinOn {s : Set α} (ne_s : s.Nonempty)
     (hs : IsCompact s) (hf : LowerSemicontinuousOn f s) :
     ∃ a ∈ s, IsMinOn f s a :=
   hf.exists_forall_le_of_isCompact ne_s hs
 
-/-- A lower semicontinuous function is bounded above on a compact set. -/
+/-- A lower semicontinuous function is bounded below on a compact set. -/
 theorem LowerSemicontinuousOn.bddBelow_of_isCompact [Nonempty β] {s : Set α} (hs : IsCompact s)
     (hf : LowerSemicontinuousOn f s) : BddBelow (f '' s) := by
   cases s.eq_empty_or_nonempty with
@@ -205,51 +261,88 @@ end LowerSemicontinuous
 
 section UpperSemicontinuous
 
-theorem UpperSemicontinuousWithinAt.congr {f g : α → β} {s : Set α} {a : α}
-    (has : a ∈ s) (hfg : ∀ᶠ x in nhdsWithin a s, f x = g x) :
-    UpperSemicontinuousWithinAt f s a ↔ UpperSemicontinuousWithinAt g s a := by
-  unfold UpperSemicontinuousWithinAt
-  apply forall_congr'
-  intro b
-  rw [Filter.EventuallyEq.eq_of_nhdsWithin hfg has]
-  apply imp_congr Iff.rfl
-  apply Filter.eventually_congr
-  apply Filter.Eventually.mono hfg
-  intro x hx
-  rw [hx]
+theorem UpperSemicontinuousWithinAt.inf
+    (hf : UpperSemicontinuousWithinAt f s a) (hg : UpperSemicontinuousWithinAt g s a) :
+    UpperSemicontinuousWithinAt (fun x ↦ f x ⊓ g x) s a :=
+  LowerSemicontinuousWithinAt.sup (β := βᵒᵈ) hf hg
 
+theorem UpperSemicontinuousAt.inf
+    (hf : UpperSemicontinuousAt f a) (hg : UpperSemicontinuousAt g a) :
+    UpperSemicontinuousAt (fun x ↦ f x ⊓ g x) a :=
+  LowerSemicontinuousAt.sup (β := βᵒᵈ) hf hg
 
-theorem UpperSemicontinuousAt.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α} {x : γ}
+theorem UpperSemicontinuousOn.inf
+    (hf : UpperSemicontinuousOn f s) (hg : UpperSemicontinuousOn g s) :
+    UpperSemicontinuousOn (fun x ↦ f x ⊓ g x) s :=
+  LowerSemicontinuousOn.sup (β := βᵒᵈ) hf hg
+
+theorem UpperSemicontinuous.inf (hf : UpperSemicontinuous f) (hg : UpperSemicontinuous g) :
+    UpperSemicontinuous (fun x ↦ f x ⊓ g x) :=
+  LowerSemicontinuous.sup (β := βᵒᵈ) hf hg
+
+theorem UpperSemicontinuousWithinAt.sup
+    (hf : UpperSemicontinuousWithinAt f s a) (hg : UpperSemicontinuousWithinAt g s a) :
+    UpperSemicontinuousWithinAt (fun x ↦ f x ⊔ g x) s a :=
+  LowerSemicontinuousWithinAt.inf (β := βᵒᵈ) hf hg
+
+theorem UpperSemicontinuousAt.sup
+    (hf : UpperSemicontinuousAt f a) (hg : UpperSemicontinuousAt g a) :
+    UpperSemicontinuousAt (fun x ↦ f x ⊔ g x) a :=
+  LowerSemicontinuousAt.inf (β := βᵒᵈ) hf hg
+
+theorem UpperSemicontinuousOn.sup
+    (hf : UpperSemicontinuousOn f s) (hg : UpperSemicontinuousOn g s) :
+    UpperSemicontinuousOn (fun x ↦ f x ⊔ g x) s :=
+  LowerSemicontinuousOn.inf (β := βᵒᵈ) hf hg
+
+theorem UpperSemicontinuous.sup (hf : UpperSemicontinuous f) (hg : UpperSemicontinuous g) :
+    UpperSemicontinuous fun x ↦ f x ⊔ g x :=
+  LowerSemicontinuous.inf (β := βᵒᵈ) hf hg
+
+variable {γ : Type*} [TopologicalSpace γ] {g : γ → α} {x : γ} {t : Set γ}
+
+theorem UpperSemicontinuousWithinAt.comp
+    (hf : UpperSemicontinuousWithinAt f s (g x)) (hg : ContinuousWithinAt g t x)
+    (hg' : MapsTo g t s) :
+    UpperSemicontinuousWithinAt (f ∘ g) t x :=
+  LowerSemicontinuousWithinAt.comp (β := βᵒᵈ) hf hg hg'
+
+theorem UpperSemicontinuousAt.comp
     (hf : UpperSemicontinuousAt f (g x)) (hg : ContinuousAt g x) :
-    UpperSemicontinuousAt (f ∘ g) x := fun b hb ↦ hg.eventually (hf b hb)
+    UpperSemicontinuousAt (f ∘ g) x :=
+  LowerSemicontinuousAt.comp (β := βᵒᵈ) hf hg
 
-theorem UpperSemicontinuous.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α}
-    (hf : UpperSemicontinuous f) (hg : Continuous g) : UpperSemicontinuous (f ∘ g) := fun x ↦
-  (hf (g x)).comp hg.continuousAt
+theorem UpperSemicontinuousOn.comp
+    (hf : UpperSemicontinuousOn f s) (hg : ContinuousOn g t) (hg' : MapsTo g t s) :
+    UpperSemicontinuousOn (f ∘ g) t :=
+  LowerSemicontinuousOn.comp (β := βᵒᵈ) hf hg hg'
 
-theorem UpperSemicontinuousWithinAt.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α} {s : Set γ}
-    {t : Set α} {x : γ} (hf : UpperSemicontinuousWithinAt f t (g x)) (hg : ContinuousWithinAt g s x)
-    (hg' : MapsTo g s t) : UpperSemicontinuousWithinAt (f ∘ g) s x := fun b hb ↦
-  (hg.tendsto_nhdsWithin hg').eventually (hf b hb)
-
-theorem UpperSemicontinuousOn.comp {γ : Type*} [TopologicalSpace γ] {g : γ → α} {s : Set γ}
-    {t : Set α} (hf : UpperSemicontinuousOn f t) (hg : ContinuousOn g s) (hg' : MapsTo g s t) :
-    UpperSemicontinuousOn (f ∘ g) s := fun x hx ↦ (hf (g x) (hg' hx)).comp (hg x hx) hg'
+theorem UpperSemicontinuous.comp
+    (hf : UpperSemicontinuous f) (hg : Continuous g) : UpperSemicontinuous (f ∘ g) :=
+  LowerSemicontinuous.comp (β := βᵒᵈ) hf hg
 
 theorem upperSemicontinuousOn_iff_restrict {s : Set α} :
     UpperSemicontinuousOn f s ↔ UpperSemicontinuous (s.restrict f) :=
-  lowerSemicontinuousOn_iff_restrict  (β := βᵒᵈ)
+  lowerSemicontinuousOn_iff_restrict (β := βᵒᵈ)
 
-/-- An upper semicontinuous function attains its upper bound on a nonempty compact set -/
+theorem upperSemicontinuousOn_iff_preimage_Iio :
+    UpperSemicontinuousOn f s ↔ ∀ b, ∃ u : Set α, IsOpen u ∧ s ∩ f ⁻¹' Set.Iio b = s ∩ u :=
+  lowerSemicontinuousOn_iff_preimage_Ioi (β := βᵒᵈ)
+
+theorem upperSemicontinuousOn_iff_preimage_Ici :
+    UpperSemicontinuousOn f s ↔ ∀ b, ∃ v : Set α, IsClosed v ∧ s ∩ f ⁻¹' Set.Ici b = s ∩ v :=
+  lowerSemicontinuousOn_iff_preimage_Iic (β := βᵒᵈ)
+
+/-- An upper semicontinuous function attains its upper bound on a nonempty compact set. -/
 theorem UpperSemicontinuousOn.exists_forall_ge_of_isCompact {s : Set α} (ne_s : s.Nonempty)
-    (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) : ∃ a ∈ s, ∀ x ∈ s, f x ≤ f a := by
-  apply LowerSemicontinuousOn.exists_forall_le_of_isCompact (β := βᵒᵈ) ne_s hs
-  exact hf
+    (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) : ∃ a ∈ s, ∀ x ∈ s, f x ≤ f a :=
+  LowerSemicontinuousOn.exists_forall_le_of_isCompact (β := βᵒᵈ) ne_s hs hf
 
+/-- An upper semicontinuous function attains its upper bound on a nonempty compact set. -/
 theorem UpperSemicontinuousOn.exists_isMaxOn {s : Set α} (ne_s : s.Nonempty)
     (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) :
     ∃ a ∈ s, IsMaxOn f s a :=
-  hf.exists_forall_ge_of_isCompact ne_s hs
+  LowerSemicontinuousOn.exists_isMinOn (β := βᵒᵈ) ne_s hs hf
 
 /-- An upper semicontinuous function is bounded above on a compact set. -/
 theorem UpperSemicontinuousOn.bddAbove_of_isCompact [Nonempty β] {s : Set α}
@@ -262,25 +355,29 @@ end LinearOrder
 
 section CompleteLinearOrder
 
-variable {β α : Type*} [TopologicalSpace α] {f : α → β}
+variable {β α : Type*} [TopologicalSpace α] {f : α → β} {s : Set α}
 
 variable [CompleteLinearOrder β]
 
-/-- A lower semicontinuous function attains its lower bound on a nonempty compact set -/
-theorem LowerSemicontinuousOn.exists_iInf₂_of_isCompact {s : Set α} (ne_s : s.Nonempty)
+section LowerSemicontinuous
+
+/-- A lower semicontinuous function attains its lower bound on a nonempty compact set. -/
+theorem LowerSemicontinuousOn.exists_iInf₂_of_isCompact (ne_s : s.Nonempty)
     (hs : IsCompact s) (hf : LowerSemicontinuousOn f s) :
     ∃ a ∈ s, f a = ⨅ x ∈ s, f x := by
   obtain ⟨a, ha, ha_le⟩ := LowerSemicontinuousOn.exists_forall_le_of_isCompact ne_s hs hf
   use a, ha, le_antisymm (le_iInf₂_iff.mpr ha_le) (iInf₂_le a ha)
 
 /-- A lower semicontinuous function attains its lower bound on a nonempty compact set -/
-theorem LowerSemicontinuous.exists_iInf₂_of_isCompact {s : Set α} (ne_s : s.Nonempty)
+theorem LowerSemicontinuous.exists_iInf₂_of_isCompact (ne_s : s.Nonempty)
     (hs : IsCompact s) (hf : LowerSemicontinuous f) :
     ∃ a ∈ s, f a = ⨅ x ∈ s, f x :=
   (hf.lowerSemicontinuousOn s).exists_iInf₂_of_isCompact ne_s hs
 
-theorem lowerSemicontinuousWithinAt_iSup₂ {ι : Type*} {f : ι → α → β} {s : Set α} {a : α}
-    {I : Set ι} (hf : ∀ i ∈ I, LowerSemicontinuousWithinAt (f i) s a) :
+variable {ι : Type*} {f : ι → α → β} {a : α} {I : Set ι}
+
+theorem lowerSemicontinuousWithinAt_iSup₂
+    (hf : ∀ i ∈ I, LowerSemicontinuousWithinAt (f i) s a) :
     LowerSemicontinuousWithinAt (fun x ↦ ⨆ i ∈ I, f i x) s a := by
   intro b hb
   simp only [lt_iSup_iff] at hb ⊢
@@ -290,24 +387,21 @@ theorem lowerSemicontinuousWithinAt_iSup₂ {ι : Type*} {f : ι → α → β} 
   intro x hx
   use i, hi, hx
 
-theorem lowerSemicontinuousAt_iSup₂ {ι : Type*} {f : ι → α → β} {a : α} {I : Set ι}
-    (hf : ∀ i ∈ I, LowerSemicontinuousAt (f i) a) :
+theorem lowerSemicontinuousAt_iSup₂ (hf : ∀ i ∈ I, LowerSemicontinuousAt (f i) a) :
     LowerSemicontinuousAt (fun x ↦ ⨆ i ∈ I, f i x) a := by
   simp only [← lowerSemicontinuousWithinAt_univ_iff] at *
   exact lowerSemicontinuousWithinAt_iSup₂ hf
 
-theorem lowerSemicontinuousOn_iSup₂ {ι : Type*} {f : ι → α → β} {s : Set α} {I : Set ι}
-    (hf : ∀ i ∈ I, LowerSemicontinuousOn (f i) s) :
+theorem lowerSemicontinuousOn_iSup₂ (hf : ∀ i ∈ I, LowerSemicontinuousOn (f i) s) :
     LowerSemicontinuousOn (fun x ↦ ⨆ i ∈ I, f i x) s := fun a ha ↦
   lowerSemicontinuousWithinAt_iSup₂ (fun i hi ↦ hf i hi a ha)
 
-theorem lowerSemicontinuous_iSup₂ {ι : Type*} {f : ι → α → β} {I : Set ι}
-    (hf : ∀ i ∈ I, LowerSemicontinuous (f i)) :
+theorem lowerSemicontinuous_iSup₂ (hf : ∀ i ∈ I, LowerSemicontinuous (f i)) :
     LowerSemicontinuous fun x ↦ ⨆ i ∈ I, f i x := fun a ha ↦
   lowerSemicontinuousAt_iSup₂ (fun i hi ↦ hf i hi a) ha
 
-theorem lowerSemicontinuousWithinAt_iInf₂ {ι : Type*} {f : ι → α → β} {s : Set α} {a : α}
-    {I : Set ι} (hI : I.Finite) (hf : ∀ i ∈ I, LowerSemicontinuousWithinAt (f i) s a) :
+theorem lowerSemicontinuousWithinAt_iInf₂ (hI : I.Finite)
+    (hf : ∀ i ∈ I, LowerSemicontinuousWithinAt (f i) s a) :
     LowerSemicontinuousWithinAt (fun x ↦ ⨅ i ∈ I, f i x) s a := by
   induction I, hI using Set.Finite.induction_on with
   | empty => simp [lowerSemicontinuousWithinAt_const]
@@ -319,167 +413,144 @@ theorem lowerSemicontinuousWithinAt_iInf₂ {ι : Type*} {f : ι → α → β} 
       intro j hj
       apply hf j (mem_insert_of_mem i hj)
 
-theorem lowerSemicontinuousAt_iInf₂ {ι : Type*} {f : ι → α → β} {a : α} {I : Set ι} (hI : I.Finite)
+theorem lowerSemicontinuousAt_iInf₂ (hI : I.Finite)
     (hf : ∀ i ∈ I, LowerSemicontinuousAt (f i) a) :
     LowerSemicontinuousAt (fun x ↦ ⨅ i ∈ I, f i x) a := by
   simp only [← lowerSemicontinuousWithinAt_univ_iff] at *
   exact lowerSemicontinuousWithinAt_iInf₂ hI hf
 
-theorem lowerSemicontinuousOn_iInf₂ {ι : Type*} {f : ι → α → β} {s : Set α} {I : Set ι}
+theorem lowerSemicontinuousOn_iInf₂
     (hI : I.Finite) (hf : ∀ i ∈ I, LowerSemicontinuousOn (f i) s) :
     LowerSemicontinuousOn (fun x ↦ ⨅ i ∈ I, f i x) s := fun a ha ↦
   lowerSemicontinuousWithinAt_iInf₂ hI (fun i hi ↦ hf i hi a ha)
 
-theorem lowerSemicontinuous_iInf₂ {ι : Type*} {f : ι → α → β} {I : Set ι} (hI : I.Finite)
+theorem lowerSemicontinuous_iInf₂ (hI : I.Finite)
     (hf : ∀ i ∈ I, LowerSemicontinuous (f i)) :
     LowerSemicontinuous fun x ↦ ⨅ i ∈ I, f i x := fun a ha ↦
   lowerSemicontinuousAt_iInf₂ hI (fun i hi ↦ hf i hi a) ha
 
-/-- An upper semicontinuous function attains its upper bound on a nonempty compact set -/
-theorem UpperSemicontinuousOn.exists_iSup_of_isCompact {s : Set α} (ne_s : s.Nonempty)
-    (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) : ∃ a ∈ s, f a = ⨆ x ∈ s, f x := by
-  apply LowerSemicontinuousOn.exists_iInf_of_isCompact (β := βᵒᵈ) ne_s hs hf
+end LowerSemicontinuous
 
-theorem upperSemicontinuousWithinAt_supr₂ {ι : Type*} {f : ι → α → β} {s : Set α} {a : α}
-    {I : Set ι} (hf : ∀ i, UpperSemicontinuousWithinAt (f i) s a) :
+section UpperSemicontinuous
+
+/-- An upper semicontinuous function attains its upper bound on a nonempty compact set. -/
+theorem UpperSemicontinuousOn.exists_iSup₂_of_isCompact (ne_s : s.Nonempty)
+    (hs : IsCompact s) (hf : UpperSemicontinuousOn f s) :
+    ∃ a ∈ s, f a = ⨆ x ∈ s, f x :=
+  LowerSemicontinuousOn.exists_iInf₂_of_isCompact (β := βᵒᵈ) ne_s hs hf
+
+/-- An upper semicontinuous function attains its upper bound on a nonempty compact set. -/
+theorem UpperSemicontinuous.exists_iSup₂_of_isCompact (ne_s : s.Nonempty)
+    (hs : IsCompact s) (hf : UpperSemicontinuous f) :
+    ∃ a ∈ s, f a = ⨆ x ∈ s, f x :=
+  LowerSemicontinuous.exists_iInf₂_of_isCompact (β := βᵒᵈ) ne_s hs hf
+
+variable {ι : Type*} {f : ι → α → β} {s : Set α} {a : α} {I : Set ι}
+
+theorem upperSemicontinuousWithinAt_iInf₂
+    (hf : ∀ i ∈ I, UpperSemicontinuousWithinAt (f i) s a) :
     UpperSemicontinuousWithinAt (fun x ↦ ⨅ i ∈ I, f i x) s a :=
-  sorry
+  lowerSemicontinuousWithinAt_iSup₂ (β := βᵒᵈ) hf
 
-theorem upperSemicontinuousOn_supr₂ {ι : Type*} {f : ι → α → β} {s : Set α} {I : Set ι}
-    (hf : ∀ i, UpperSemicontinuousOn (f i) s) : UpperSemicontinuousOn (fun x ↦ ⨅ i ∈ I, f i x) s :=
-  sorry
+theorem upperSemicontinuousAt_iInf₂
+    (hf : ∀ i ∈ I, UpperSemicontinuousAt (f i) a) :
+    UpperSemicontinuousAt (fun x ↦ ⨅ i ∈ I, f i x) a :=
+  lowerSemicontinuousAt_iSup₂ (β := βᵒᵈ) hf
 
-theorem upperSemicontinuousAt_supr₂ {ι : Type*} {f : ι → α → β} {a : α} {I : Set ι}
-    (hf : ∀ i, UpperSemicontinuousAt (f i) a) : UpperSemicontinuousAt (fun x ↦ ⨅ i ∈ I, f i x) a :=
-  sorry
+theorem upperSemicontinuousOn_iInf₂
+    (hf : ∀ i ∈ I, UpperSemicontinuousOn (f i) s) :
+    UpperSemicontinuousOn (fun x ↦ ⨅ i ∈ I, f i x) s :=
+  lowerSemicontinuousOn_iSup₂ (β := βᵒᵈ) hf
 
-theorem upperSemicontinuous_supr₂ {ι : Type*} {f : ι → α → β} {I : Set ι}
-    (hf : ∀ i, UpperSemicontinuous (f i)) : UpperSemicontinuous fun x ↦ ⨅ i ∈ I, f i x :=
-  sorry
+theorem upperSemicontinuous_iInf₂
+    (hf : ∀ i ∈ I, UpperSemicontinuous (f i)) :
+    UpperSemicontinuous (fun x ↦ ⨅ i ∈ I, f i x) :=
+  lowerSemicontinuous_iSup₂ (β := βᵒᵈ) hf
+
+theorem upperSemicontinuousWithinAt_iSup₂ (hI : I.Finite)
+    (hf : ∀ i ∈ I, UpperSemicontinuousWithinAt (f i) s a) :
+    UpperSemicontinuousWithinAt (fun x ↦ ⨆ i ∈ I, f i x) s a :=
+  lowerSemicontinuousWithinAt_iInf₂ (β := βᵒᵈ) hI hf
+
+theorem upperSemicontinuousAt_iSup₂ (hI : I.Finite)
+    (hf : ∀ i ∈ I, UpperSemicontinuousAt (f i) a) :
+    UpperSemicontinuousAt (fun x ↦ ⨆ i ∈ I, f i x) a :=
+  lowerSemicontinuousAt_iInf₂ (β := βᵒᵈ) hI hf
+
+theorem upperSemicontinuousOn_iSup₂ (hI : I.Finite)
+    (hf : ∀ i ∈ I, UpperSemicontinuousOn (f i) s) :
+    UpperSemicontinuousOn (fun x ↦ ⨆ i ∈ I, f i x) s :=
+  lowerSemicontinuousOn_iInf₂ (β := βᵒᵈ) hI hf
+
+theorem upperSemicontinuous_iSup₂ (hI : I.Finite)
+    (hf : ∀ i ∈ I, UpperSemicontinuous (f i)) :
+    UpperSemicontinuous (fun x ↦ ⨆ i ∈ I, f i x) :=
+  lowerSemicontinuous_iInf₂ (β := βᵒᵈ) hI hf
+
+end UpperSemicontinuous
 
 -- Lemmas which depend on two topologies
 
-theorem lowerSemicontinuousWithinAt_iSup₂ {ι : Type*} {f : ι → α → β}
-    {s : Set α} {a : α}
-    [TopologicalSpace ι] {I : Set ι} (ne_I : Set.Nonempty I) (hI : IsCompact I)
-    (hf : ∀ i ∈ I, LowerSemicontinuousWithinAt (f i) s a)
-    (hf' : UpperSemicontinuousOn (fun i ↦ f i a) I) :
-    LowerSemicontinuousWithinAt (fun x ↦ ⨆ i ∈ I, f i x) s a := by
-  intro t ht
-  dsimp at ht
-  obtain ⟨i, hi, hi'⟩ := hf'.exists_iSup_of_isCompact ne_I hI
-  rw [← hi'] at ht
-  let h := hf i hi t ht
+section LowerSemicontinuous
+
+variable {ι : Type*} {f : ι → α → β} {s : Set α} {a : α}
+    [TopologicalSpace ι] {I : Set ι}
+
+theorem lowerSemicontinuousOn_iInf₂_of_isProper
+    {f : α → β}
+    {γ : Type*} [TopologicalSpace γ] {g : α → γ} (hg : IsProperMap g)
+    (hf : LowerSemicontinuous f) :
+    LowerSemicontinuousOn (fun z ↦ ⨅ x ∈ g ⁻¹' {z}, f x) (range g) := by
+  intro z hz b hb
+  dsimp at hb
+  have hinf (z) (hz : z ∈ range g) :
+    ∃ a ∈ g ⁻¹' {z}, f a = ⨅ x ∈ g ⁻¹' {z}, f x := by
+    apply LowerSemicontinuousOn.exists_iInf₂_of_isCompact
+    · exact hz
+    · apply hg.isCompact_preimage isCompact_singleton
+    · exact LowerSemicontinuous.lowerSemicontinuousOn hf (g ⁻¹' {z})
+  have (a) (ha : a ∈ g ⁻¹' {z}) :
+    ∃ u, IsOpen u ∧ a ∈ u ∧ ∀ x ∈ u, b < f x := by
+    specialize hf a b ?_
+    · obtain ⟨m, hm, hm'⟩ := hinf z hz
+      apply lt_of_lt_of_le hb
+      exact biInf_le f ha
+    · rw [Filter.eventually_iff, mem_nhds_iff] at hf
+      obtain ⟨u, hu, hu', hau⟩ := hf
+      exact ⟨u, hu', hau, hu⟩
+  let v := ⋃ (a : α) (ha : a ∈ g ⁻¹' {z}), (this a ha).choose
+  have hv : IsOpen v := sorry
+  have hvz : g ⁻¹' {z} ⊆ v := sorry
+  have hv' : IsOpen (g '' vᶜ)ᶜ := sorry
+  have hv'z : z ∈ (g '' vᶜ)ᶜ := sorry
+  rw [Filter.eventually_iff, mem_nhdsWithin]
+  use (g '' vᶜ)ᶜ, hv', hv'z
+  rintro c ⟨hc, hc'⟩
   dsimp
-  apply Filter.Eventually.mp h
-  apply Filter.Eventually.of_forall
-  intro x hx
-  apply lt_of_lt_of_le hx
-  apply le_iSup₂ i hi
-
-theorem upperSemicontinuousWithinAt_iInf₂ {ι : Type*} {f : ι → α → β}
-    {s : Set α} {a : α}
-    [TopologicalSpace ι] {I : Set ι} (ne_I : Set.Nonempty I) (hI : IsCompact I)
-    (hf : ∀ i ∈ I, UpperSemicontinuousWithinAt (f i) s a)
-    (hf' : LowerSemicontinuousOn (fun i ↦ f i a) I) :
-    UpperSemicontinuousWithinAt (fun x ↦ ⨅ i ∈ I, f i x) s a :=
-  lowerSemicontinuousWithinAt_iSup₂ (β := βᵒᵈ) ne_I hI hf hf'
+  obtain ⟨m, hm, hm'⟩ := hinf c hc'
+  rw [← hm']
+  simp only [mem_preimage, mem_singleton_iff] at hm
+  simp only [mem_compl_iff, mem_image, not_exists, not_and] at hc
+  simp_rw [not_imp_not] at hc
+  specialize hc m hm
+  simp [v] at hc
+  obtain ⟨i, hi, hc⟩ := hc
+  exact ((this i hi).choose_spec.2.2 m hc)
+  -- unfinished
 
 
+theorem upperSemicontinuousOn_iSup₂_of_isProper
+    {f : α → β}
+    {γ : Type*} [TopologicalSpace γ] {g : α → γ} (hg : IsProperMap g)
+    (hf : UpperSemicontinuous f) :
+    UpperSemicontinuousOn (fun z ↦ ⨆ x ∈ g ⁻¹' {z}, f x) (range g) :=
+  lowerSemicontinuousOn_iInf₂_of_isProper (β := βᵒᵈ) hg hf
 
+
+end LowerSemicontinuous
 
 end CompleteLinearOrder
 
 end Semicontinuity
 
-open Set
-theorem _root_.IsMinOn.isGLB {α β : Type*} [Preorder β] {f : α → β} {s : Set α} {a :α}
-    (ha : a ∈ s) (hfsa : IsMinOn f s a) :
-    IsGLB {f x | x ∈ s} (f a) := by
-  rw [isGLB_iff_le_iff]
-  intro b
-  simp only [mem_lowerBounds, mem_setOf_eq, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
-  exact ⟨fun hba x hx ↦ le_trans hba (hfsa hx), fun hb ↦ hb a ha⟩
 
-theorem _root_.IsMaxOn.isLUB {α β : Type*} [Preorder β]  {f : α → β} {s : Set α} {a :α}
-    (ha : a ∈ s) (hfsa : IsMaxOn f s a) :
-    IsLUB {f x | x ∈ s} (f a) := by
-  rw [isLUB_iff_le_iff]
-  intro b
-  simp only [mem_upperBounds, mem_setOf_eq, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
-  exact ⟨fun hba x hx ↦ le_trans (hfsa hx) hba, fun hb ↦ hb a ha⟩
-
-theorem _root_.upperSemicontinuousOn_of_forall_isMinOn_and_mem
-    {ι : Type*} {E : Type*} [TopologicalSpace E]
-    {β : Type*} [Preorder β]
-    {f : ι → E → β} {I : Set ι} {s : Set E}
-    (hfs : ∀ i ∈ I, UpperSemicontinuousOn (f i) s)
-    {m : E → ι}
-    (m_mem : ∀ x ∈ s, m x ∈ I)
-    (m_min : ∀ x ∈ s, IsMinOn (fun i ↦ f i x) I (m x)) :
-    UpperSemicontinuousOn (fun x ↦ f (m x) x) s := by
-  intro y hy b hb
-  apply Filter.Eventually.mp <| hfs (m y) (m_mem y hy) y hy b hb
-  apply eventually_nhdsWithin_of_forall
-  intro z hz
-  apply lt_of_le_of_lt (m_min z hz (m_mem y hy))
-
-theorem _root_.lowerSemicontinuousOn_of_forall_isMaxOn_and_mem
-    {ι : Type*} {E : Type*} [TopologicalSpace E]
-    {β : Type*} [Preorder β]
-    {f : ι → E → β} {I : Set ι} {s : Set E}
-    (hfy : ∀ i ∈ I, LowerSemicontinuousOn (f i) s)
-    {M : E → ι}
-    (M_mem : ∀ x ∈ s, M x ∈ I)
-    (M_max : ∀ x ∈ s, IsMaxOn (fun y ↦ f y x) I (M x)) :
-    LowerSemicontinuousOn (fun x ↦ f (M x) x) s := by
-  intro x hx b hb
-  apply Filter.Eventually.mp <| hfy (M x) (M_mem x hx) x hx b hb
-  apply eventually_nhdsWithin_of_forall
-  intro z hz h
-  exact lt_of_lt_of_le h (M_max z hz (M_mem x hx))
-
-
-#exit
-
-section Junk
-
-/-
-Attempts to do the job without reproving anything
-
-but one gets to prove [complete_linear_order_topology (with_lower_topology β)]
--/
-variable {α β : Type*} [TopologicalSpace α] [Preorder β] [TopologicalSpace β] [OrderTopology β]
-
-variable (f : α → β)
-
-open WithLowerTopology
-
-namespace WithLowerTopology
-
-theorem toLower_continous : Continuous (toLower : β → WithLowerTopology β) :=
-  sorry
-#align with_lower_topology.to_lower_continous WithLowerTopology.toLower_continous
-
-theorem ofLower_upper_semicontinous : UpperSemicontinuous (ofLower : WithLowerTopology β → β) :=
-  sorry
-#align with_lower_topology.of_lower_upper_semicontinous WithLowerTopology.ofLower_upper_semicontinous
-
-theorem upper_semicontinuous_iff_toLower_comp_continuousAt {a : α} :
-    UpperSemicontinuousAt f a ↔ ContinuousAt (toLower ∘ f) a :=
-  sorry
-#align with_lower_topology.upper_semicontinuous_iff_to_lower_comp_continuous_at WithLowerTopology.upper_semicontinuous_iff_toLower_comp_continuousAt
-
-theorem upperSemicontinuous_iff_toLower_comp_continuous :
-    UpperSemicontinuous f ↔ Continuous (toLower ∘ f) :=
-  sorry
-#align with_lower_topology.upper_semicontinuous_iff_to_lower_comp_continuous WithLowerTopology.upperSemicontinuous_iff_toLower_comp_continuous
-
-theorem upper_semicontinuous_iff_toLower_comp_continuousOn {s : Set α} :
-    UpperSemicontinuousOn f s ↔ ContinuousOn (toLower ∘ f) s :=
-  sorry
-#align with_lower_topology.upper_semicontinuous_iff_to_lower_comp_continuous_on WithLowerTopology.upper_semicontinuous_iff_toLower_comp_continuousOn
-
-end WithLowerTopology
-
-end Junk
