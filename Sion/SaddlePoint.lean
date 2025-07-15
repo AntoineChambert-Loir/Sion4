@@ -1,3 +1,4 @@
+import Mathlib
 import Sion.Semicontinuous
 import Sion.Concavexity
 import Sion.ForMathlib.Misc
@@ -22,7 +23,7 @@ theorem iSup₂_iInf₂_le_iInf₂_iSup₂ [CompleteLinearOrder β]:
 if `f a y ≤ f x b` for all `x ∈ X` and all `y `in Y`.
 
 Note: we do not require that a ∈ X and b ∈ Y. -/
-def IsSaddlePointOn  [Preorder β] (a : E) (b : F) :=
+def IsSaddlePointOn  [Preorder β] (a : E) (b : F) : Prop :=
   ∀ x ∈ X, ∀ y ∈ Y, f a y ≤ f x b
 
 variable {X Y f}
@@ -95,7 +96,6 @@ lemma isSaddlePointOn_value [CompleteLinearOrder β]
       apply iInf₂_le a ha
     · rw [← h.2]
       apply le_trans (le_rfl) (le_iSup₂ b hb)
-
 
 end SaddlePoint
 
