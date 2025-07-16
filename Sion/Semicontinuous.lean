@@ -496,6 +496,37 @@ section LowerSemicontinuous
 variable {ι : Type*} {f : ι → α → β} {s : Set α} {a : α}
     [TopologicalSpace ι] {I : Set ι}
 
+theorem IsClosedMap.comap_nhdsSet_le_nhdsSet_preimage
+    {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
+    (hg : IsClosedMap g) {t : Set γ} :
+    comap g (nhdsSet t) ≤ nhdsSet (g ⁻¹' t) := by
+  intro u hu
+  obtain ⟨v, hv, htv, huv⟩ := eventually_nhdsSet_iff_exists.mp hu
+  simp only [mem_comap]
+  use (g '' vᶜ)ᶜ
+  constructor
+  · have : IsOpen (g '' vᶜ)ᶜ := by
+      simp only [isOpen_compl_iff]
+      apply hg
+      simpa only [isClosed_compl_iff]
+    rw [IsOpen.mem_nhdsSet this]
+    intro c hc
+    simp only [mem_compl_iff, mem_image, not_exists, not_and, not_imp_not]
+    intro a ha
+    apply htv
+    simpa only [mem_preimage, ha]
+  · intro a ha
+    simp only [preimage_compl, mem_compl_iff, mem_preimage, mem_image, not_exists, not_and,
+      not_imp_not] at ha
+    exact huv a (ha a (refl (g a)))
+
+theorem IsClosedMap.comap_nhds_le_nhdsSet_preimage
+    {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
+    (hg : IsClosedMap g) {c : γ} :
+    comap g (𝓝 c) ≤ nhdsSet (g ⁻¹' {c}) := by
+  rw [← nhdsSet_singleton]
+  exact hg.comap_nhdsSet_le_nhdsSet_preimage
+
 theorem lowerSemicontinuousOn_iInf₂_of_isProper
     {f : α → β}
     {γ : Type*} [TopologicalSpace γ] {g : α → γ} (hg : IsProperMap g)
@@ -518,6 +549,35 @@ theorem lowerSemicontinuousOn_iInf₂_of_isProper
     · rw [Filter.eventually_iff, mem_nhds_iff] at hf
       obtain ⟨u, hu, hu', hau⟩ := hf
       exact ⟨u, hu', hau, hu⟩
+  have that (a) (ha : a ∈ g ⁻¹' {z}) :
+    {x | b < f x} ∈ nhds a := by
+    obtain ⟨u, hu, hau, hbu⟩ := this a ha
+    exact hf a b (hbu a hau)
+  rw [← mem_nhdsSet_iff_forall] at that
+  have that'' : {x | b < f x} ∈ comap g (𝓝 z) :=
+    hg.isClosedMap.comap_nhds_le_nhdsSet_preimage that
+  simp only [mem_comap] at that''
+  obtain ⟨t, ht, ht'⟩ := that''
+  simp only [Filter.Eventually]
+  rw [mem_nhdsWithin]
+  rw [mem_nhds_iff] at ht
+  obtain ⟨u, hut, hu, hzu⟩ := ht
+  use u, hu, hzu
+  rintro c ⟨hcu, hcg⟩
+  simp only [mem_setOf_eq]
+  simp only [mem_range] at hcg
+  obtain ⟨a, ha⟩ := hcg
+  have : a ∈ g ⁻¹' t := by
+    simp only [mem_preimage, ha]
+    exact hut hcu
+  specialize hinf c (by rw [← ha]; exact mem_range_self a)
+  obtain ⟨x, hx, hfx⟩ := hinf
+  rw [← hfx]
+  apply ht'
+  simp only [mem_preimage, mem_singleton_iff] at hx ⊢
+  rw [hx, ← ha]
+  exact this
+  /-
   let v := ⋃ (a : α) (ha : a ∈ g ⁻¹' {z}), (this a ha).choose
   have hv : IsOpen v := sorry
   have hvz : g ⁻¹' {z} ⊆ v := sorry
@@ -536,8 +596,7 @@ theorem lowerSemicontinuousOn_iInf₂_of_isProper
   simp [v] at hc
   obtain ⟨i, hi, hc⟩ := hc
   exact ((this i hi).choose_spec.2.2 m hc)
-  -- unfinished
-
+-/
 
 theorem upperSemicontinuousOn_iSup₂_of_isProper
     {f : α → β}
