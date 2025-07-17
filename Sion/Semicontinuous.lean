@@ -213,28 +213,28 @@ theorem LowerSemicontinuous.inf (hf : LowerSemicontinuous f)
 theorem LowerSemicontinuousOn.exists_forall_le_of_isCompact {s : Set α} (ne_s : s.Nonempty)
     (hs : IsCompact s) (hf : LowerSemicontinuousOn f s) :
     ∃ a ∈ s, ∀ x ∈ s, f a ≤ f x := by
-  haveI : Nonempty α := ⟨ne_s.choose⟩
-  haveI : Nonempty s := ⟨⟨ne_s.choose, ne_s.choose_spec⟩⟩
+  have _ : Nonempty α := Exists.nonempty ne_s
+  have _ : Nonempty s := Nonempty.to_subtype ne_s
   let φ : β → Filter α := fun b ↦ 𝓟 (s ∩ f ⁻¹' Iic b)
   let ℱ : Filter α := ⨅ a : s, φ (f a)
   have : ℱ.NeBot := by
-    refine' iInf_neBot_of_directed _ _
+    apply iInf_neBot_of_directed _ _
     · change Directed GE.ge (fun x ↦ (φ ∘ (fun (a : s) ↦ f ↑a)) x)
       refine' Directed.mono_comp GE.ge _ _
       · intro x y hxy
-        refine'
+        exact
           principal_mono.mpr (inter_subset_inter_right _ (preimage_mono <| Iic_subset_Iic.mpr hxy))
       · apply IsTotal.directed
     · intro x
       have : (pure x : Filter α) ≤ φ (f x) := le_principal_iff.mpr ⟨x.2, le_refl (f x)⟩
       exact neBot_of_le this
   have hℱs : ℱ ≤ 𝓟 s :=
-    iInf_le_of_le ⟨ne_s.choose, ne_s.choose_spec⟩ (principal_mono.mpr <| inter_subset_left)
-  have hℱ : ∀ x ∈ s, ∀ᶠ y in ℱ, f y ≤ f x := fun x hx ↦
+    iInf_le_of_le (Classical.choice inferInstance) (principal_mono.mpr <| inter_subset_left)
+  have hℱ (x) (hx : x ∈ s) : ∀ᶠ y in ℱ, f y ≤ f x :=
     mem_iInf_of_mem ⟨x, hx⟩ (by simp only [mem_principal]; apply inter_subset_right)
   obtain ⟨a, ha, h⟩ := hs hℱs
-  letI : (𝓝 a ⊓ ℱ).NeBot := h
-  refine' ⟨a, ha, fun x hx ↦ le_of_not_gt fun hxa ↦ _⟩
+  refine ⟨a, ha, fun x hx ↦ le_of_not_gt fun hxa ↦ ?_⟩
+  let _ : (𝓝 a ⊓ ℱ).NeBot := h
   suffices ∀ᶠ _ in 𝓝 a ⊓ ℱ, False by rwa [eventually_const] at this
   filter_upwards [(hf a ha (f x) hxa).filter_mono (inf_le_inf_left _ hℱs),
     (hℱ x hx).filter_mono (inf_le_right : 𝓝 a ⊓ ℱ ≤ ℱ)] using fun y h₁ h₂ ↦ not_le_of_gt h₁ h₂
@@ -496,11 +496,20 @@ section LowerSemicontinuous
 variable {ι : Type*} {f : ι → α → β} {s : Set α} {a : α}
     [TopologicalSpace ι] {I : Set ι}
 
+example {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
+    (hg : IsClosedMap g) {u : Set α} {t : Set γ} :
+    u ∈ nhdsSet (g ⁻¹' t) ↔ g '' u ∈ nhdsSet t := by
+  sorry
+
 theorem IsClosedMap.comap_nhdsSet_le_nhdsSet_preimage
     {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
     (hg : IsClosedMap g) {t : Set γ} :
     comap g (nhdsSet t) ≤ nhdsSet (g ⁻¹' t) := by
   intro u hu
+  -- new solution
+  rw [← compl_compl u, Filter.compl_mem_comap]
+  rw [mem_nhdsSet_iff_forall] at hu
+  -- end
   obtain ⟨v, hv, htv, huv⟩ := eventually_nhdsSet_iff_exists.mp hu
   simp only [mem_comap]
   use (g '' vᶜ)ᶜ
@@ -527,6 +536,20 @@ theorem IsClosedMap.comap_nhds_le_nhdsSet_preimage
   rw [← nhdsSet_singleton]
   exact hg.comap_nhdsSet_le_nhdsSet_preimage
 
+lemma foo {α γ : Type*} [TopologicalSpace γ] {g : α → γ}
+    (c : γ)
+    (r : α → Prop) (s : γ → Prop)
+    (hinf : ∀ z ∈ range g, ∃ a ∈ g ⁻¹' {z}, r a → s z)
+    (hg : {x | r x} ∈ comap g (𝓝 c)) :
+    ∀ᶠ (z : γ) in 𝓝[range g] c, s z := by
+  simp only [mem_comap] at hg
+  obtain ⟨t, ht, ht'⟩ := hg
+  rw [nhdsWithin, ← Filter.map_comap]
+  refine ⟨t, ht, fun x _ ↦ ?_⟩
+  obtain ⟨a, ha, hax⟩ := hinf (g x) (mem_range_self x)
+  simp only [mem_preimage, mem_singleton_iff] at ha
+  exact hax (ht' (by simpa [ha]))
+
 theorem lowerSemicontinuousOn_iInf₂_of_isProper
     {f : α → β}
     {γ : Type*} [TopologicalSpace γ] {g : α → γ} (hg : IsProperMap g)
@@ -540,63 +563,16 @@ theorem lowerSemicontinuousOn_iInf₂_of_isProper
     · exact hz
     · apply hg.isCompact_preimage isCompact_singleton
     · exact LowerSemicontinuous.lowerSemicontinuousOn hf (g ⁻¹' {z})
-  have (a) (ha : a ∈ g ⁻¹' {z}) :
-    ∃ u, IsOpen u ∧ a ∈ u ∧ ∀ x ∈ u, b < f x := by
-    specialize hf a b ?_
-    · obtain ⟨m, hm, hm'⟩ := hinf z hz
-      apply lt_of_lt_of_le hb
-      exact biInf_le f ha
-    · rw [Filter.eventually_iff, mem_nhds_iff] at hf
-      obtain ⟨u, hu, hu', hau⟩ := hf
-      exact ⟨u, hu', hau, hu⟩
-  have that (a) (ha : a ∈ g ⁻¹' {z}) :
-    {x | b < f x} ∈ nhds a := by
-    obtain ⟨u, hu, hau, hbu⟩ := this a ha
-    exact hf a b (hbu a hau)
-  rw [← mem_nhdsSet_iff_forall] at that
-  have that'' : {x | b < f x} ∈ comap g (𝓝 z) :=
-    hg.isClosedMap.comap_nhds_le_nhdsSet_preimage that
-  simp only [mem_comap] at that''
-  obtain ⟨t, ht, ht'⟩ := that''
-  simp only [Filter.Eventually]
-  rw [mem_nhdsWithin]
-  rw [mem_nhds_iff] at ht
-  obtain ⟨u, hut, hu, hzu⟩ := ht
-  use u, hu, hzu
-  rintro c ⟨hcu, hcg⟩
-  simp only [mem_setOf_eq]
-  simp only [mem_range] at hcg
-  obtain ⟨a, ha⟩ := hcg
-  have : a ∈ g ⁻¹' t := by
-    simp only [mem_preimage, ha]
-    exact hut hcu
-  specialize hinf c (by rw [← ha]; exact mem_range_self a)
-  obtain ⟨x, hx, hfx⟩ := hinf
-  rw [← hfx]
-  apply ht'
-  simp only [mem_preimage, mem_singleton_iff] at hx ⊢
-  rw [hx, ← ha]
-  exact this
-  /-
-  let v := ⋃ (a : α) (ha : a ∈ g ⁻¹' {z}), (this a ha).choose
-  have hv : IsOpen v := sorry
-  have hvz : g ⁻¹' {z} ⊆ v := sorry
-  have hv' : IsOpen (g '' vᶜ)ᶜ := sorry
-  have hv'z : z ∈ (g '' vᶜ)ᶜ := sorry
-  rw [Filter.eventually_iff, mem_nhdsWithin]
-  use (g '' vᶜ)ᶜ, hv', hv'z
-  rintro c ⟨hc, hc'⟩
-  dsimp
-  obtain ⟨m, hm, hm'⟩ := hinf c hc'
-  rw [← hm']
-  simp only [mem_preimage, mem_singleton_iff] at hm
-  simp only [mem_compl_iff, mem_image, not_exists, not_and] at hc
-  simp_rw [not_imp_not] at hc
-  specialize hc m hm
-  simp [v] at hc
-  obtain ⟨i, hi, hc⟩ := hc
-  exact ((this i hi).choose_spec.2.2 m hc)
--/
+  have : {x | b < f x} ∈ comap g (𝓝 z) := by
+    apply hg.isClosedMap.comap_nhds_le_nhdsSet_preimage
+    rw [mem_nhdsSet_iff_forall]
+    intro a ha
+    exact hf a b (lt_of_lt_of_le hb (biInf_le f ha))
+  apply foo (r := fun x ↦ b < f x)
+    (s := fun z ↦ b < ⨅ x ∈ g ⁻¹' {z}, f x) _ _ this
+  intro z hz
+  obtain ⟨a, ha, ha'⟩ := hinf z hz
+  use a, ha, by simp [ha']
 
 theorem upperSemicontinuousOn_iSup₂_of_isProper
     {f : α → β}
