@@ -496,59 +496,76 @@ section LowerSemicontinuous
 variable {ι : Type*} {f : ι → α → β} {s : Set α} {a : α}
     [TopologicalSpace ι] {I : Set ι}
 
-example {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
-    (hg : IsClosedMap g) {u : Set α} {t : Set γ} :
-    u ∈ nhdsSet (g ⁻¹' t) ↔ g '' u ∈ nhdsSet t := by
-  sorry
-
 theorem IsClosedMap.comap_nhdsSet_le_nhdsSet_preimage
     {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
-    (hg : IsClosedMap g) {t : Set γ} :
+    (hg : IsClosedMap g) (t : Set γ) :
     comap g (nhdsSet t) ≤ nhdsSet (g ⁻¹' t) := by
   intro u hu
-  -- new solution
-  rw [← compl_compl u, Filter.compl_mem_comap]
-  rw [mem_nhdsSet_iff_forall] at hu
-  -- end
   obtain ⟨v, hv, htv, huv⟩ := eventually_nhdsSet_iff_exists.mp hu
-  simp only [mem_comap]
-  use (g '' vᶜ)ᶜ
-  constructor
-  · have : IsOpen (g '' vᶜ)ᶜ := by
-      simp only [isOpen_compl_iff]
-      apply hg
-      simpa only [isClosed_compl_iff]
-    rw [IsOpen.mem_nhdsSet this]
-    intro c hc
-    simp only [mem_compl_iff, mem_image, not_exists, not_and, not_imp_not]
+  simp only [mem_comap_iff_compl, mem_nhdsSet_iff_forall, mem_nhds_iff]
+  intro x hx
+  use (g '' vᶜ)ᶜ , ?_, ?_
+  · simp only [mem_compl_iff, mem_image, not_exists, not_and, not_imp_not]
     intro a ha
     apply htv
-    simpa only [mem_preimage, ha]
-  · intro a ha
-    simp only [preimage_compl, mem_compl_iff, mem_preimage, mem_image, not_exists, not_and,
-      not_imp_not] at ha
-    exact huv a (ha a (refl (g a)))
+    rwa [mem_preimage, ha]
+  · rw [compl_subset_compl]
+    apply Set.image_mono
+    rwa [compl_subset_compl]
+  · simp only [isOpen_compl_iff]
+    apply hg
+    simpa only [isClosed_compl_iff]
+
+theorem Continuous.preimage_mem_nhdsSet
+    {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
+    (hg' : Continuous g)
+    {t : Set γ} {v : Set γ}
+    (hv : v ∈ nhdsSet t) :
+    g ⁻¹' v ∈ nhdsSet (g ⁻¹' t) := by
+  rw [mem_nhdsSet_iff_forall] at hv ⊢
+  intro x hx
+  simp only [mem_preimage] at hx
+  specialize hv (g x) hx
+  exact hg'.continuousAt.preimage_mem_nhds hv
+
+theorem IsClosedMap.nhdsSet_preimage_eq_comap_nhdsSet_of_continuous
+    {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
+    (hg : IsClosedMap g) (hg' : Continuous g) (t : Set γ) :
+    nhdsSet (g ⁻¹' t) = comap g (nhdsSet t) := by
+  ext u
+  constructor
+  · apply hg.comap_nhdsSet_le_nhdsSet_preimage
+  · intro h
+    obtain ⟨v, hv, hvu⟩ := h
+    apply Filter.mem_of_superset _ hvu
+    apply hg'.preimage_mem_nhdsSet hv
 
 theorem IsClosedMap.comap_nhds_le_nhdsSet_preimage
     {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
-    (hg : IsClosedMap g) {c : γ} :
-    comap g (𝓝 c) ≤ nhdsSet (g ⁻¹' {c}) := by
-  rw [← nhdsSet_singleton]
-  exact hg.comap_nhdsSet_le_nhdsSet_preimage
+    (hg : IsClosedMap g) (c : γ) :
+    comap g (𝓝 c) ≤ nhdsSet (g ⁻¹' {c}) :=
+  nhdsSet_singleton (x := c) ▸ hg.comap_nhdsSet_le_nhdsSet_preimage _
 
-lemma foo {α γ : Type*} [TopologicalSpace γ] {g : α → γ}
-    (c : γ)
-    (r : α → Prop) (s : γ → Prop)
-    (hinf : ∀ z ∈ range g, ∃ a ∈ g ⁻¹' {z}, r a → s z)
-    (hg : {x | r x} ∈ comap g (𝓝 c)) :
+theorem IsClosedMap.nhdsSet_preimage_eq_comap_nhds_of_continuous
+    {γ : Type*} [TopologicalSpace γ] {g : α  → γ}
+    (hg : IsClosedMap g) (hg' : Continuous g)
+    (c : γ) :
+    nhdsSet (g ⁻¹' {c}) = comap g (nhds c) :=
+  nhdsSet_singleton (x := c) ▸
+    hg.nhdsSet_preimage_eq_comap_nhdsSet_of_continuous hg' _
+
+lemma Filter.eventually_nhdsWithin_range_of_exists
+    {α γ : Type*} [TopologicalSpace γ] {g : α → γ}
+    {c : γ} {r : α → Prop} {s : γ → Prop}
+    (mem_comap : {x | r x} ∈ comap g (𝓝 c))
+    (exists_implies : ∀ z ∈ range g, ∃ a ∈ g ⁻¹' {z}, r a → s z) :
     ∀ᶠ (z : γ) in 𝓝[range g] c, s z := by
-  simp only [mem_comap] at hg
-  obtain ⟨t, ht, ht'⟩ := hg
-  rw [nhdsWithin, ← Filter.map_comap]
-  refine ⟨t, ht, fun x _ ↦ ?_⟩
-  obtain ⟨a, ha, hax⟩ := hinf (g x) (mem_range_self x)
-  simp only [mem_preimage, mem_singleton_iff] at ha
-  exact hax (ht' (by simpa [ha]))
+  obtain ⟨t, ht, ht'⟩ := mem_comap
+  rw [eventually_nhdsWithin_iff]
+  apply Filter.eventually_of_mem ht
+  intro z _ hz
+  obtain ⟨a, ha, hra⟩ := exists_implies z hz
+  exact hra (ht' (Set.preimage_mono (by simpa) ha))
 
 theorem lowerSemicontinuousOn_iInf₂_of_isProper
     {f : α → β}
@@ -557,22 +574,17 @@ theorem lowerSemicontinuousOn_iInf₂_of_isProper
     LowerSemicontinuousOn (fun z ↦ ⨅ x ∈ g ⁻¹' {z}, f x) (range g) := by
   intro z hz b hb
   dsimp at hb
-  have hinf (z) (hz : z ∈ range g) :
-    ∃ a ∈ g ⁻¹' {z}, f a = ⨅ x ∈ g ⁻¹' {z}, f x := by
-    apply LowerSemicontinuousOn.exists_iInf₂_of_isCompact
-    · exact hz
-    · apply hg.isCompact_preimage isCompact_singleton
-    · exact LowerSemicontinuous.lowerSemicontinuousOn hf (g ⁻¹' {z})
   have : {x | b < f x} ∈ comap g (𝓝 z) := by
     apply hg.isClosedMap.comap_nhds_le_nhdsSet_preimage
     rw [mem_nhdsSet_iff_forall]
     intro a ha
     exact hf a b (lt_of_lt_of_le hb (biInf_le f ha))
-  apply foo (r := fun x ↦ b < f x)
-    (s := fun z ↦ b < ⨅ x ∈ g ⁻¹' {z}, f x) _ _ this
+  apply Filter.eventually_nhdsWithin_range_of_exists this
   intro z hz
-  obtain ⟨a, ha, ha'⟩ := hinf z hz
-  use a, ha, by simp [ha']
+  obtain ⟨a, ha, ha'⟩ :=
+    (hf.lowerSemicontinuousOn _).exists_iInf₂_of_isCompact hz
+      (hg.isCompact_preimage isCompact_singleton)
+  use a, ha, fun h ↦ lt_of_lt_of_eq h ha'
 
 theorem upperSemicontinuousOn_iSup₂_of_isProper
     {f : α → β}
@@ -580,7 +592,6 @@ theorem upperSemicontinuousOn_iSup₂_of_isProper
     (hf : UpperSemicontinuous f) :
     UpperSemicontinuousOn (fun z ↦ ⨆ x ∈ g ⁻¹' {z}, f x) (range g) :=
   lowerSemicontinuousOn_iInf₂_of_isProper (β := βᵒᵈ) hg hf
-
 
 end LowerSemicontinuous
 

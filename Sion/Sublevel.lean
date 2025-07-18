@@ -106,59 +106,50 @@ theorem isCompact_leSublevelOn [TopologicalSpace E] (hf : LowerSemicontinuousOn 
     simp [mem_leSublevelOn_iff]
   simp [leSublevelOn_subset]
 
--- We need a better elimination theorem for intersections in a compact subset
--- which are closed in the compact subset and not necessarily in the ambient space
-theorem inter_leSublevelOn_empty_iff_exists_finset_inter {ι : Type*} {f : ι → E → β} {I : Set ι}
+theorem inter_leSublevelOn_empty_iff_exists_finset_inter
+    {ι : Type*} {f : ι → E → β} {I : Set ι}
     (ne_I : I.Nonempty) [TopologicalSpace E] (ks : IsCompact s)
     (hfi : ∀ i ∈ I, LowerSemicontinuousOn (f i) s) :
     ⋂ i ∈ I, LeSublevelOn s (f i) b = ∅ ↔
       ∃ u : Finset I, ∀ x ∈ s, ∃ i ∈ u, b < f i x := by
   have : Nonempty I := Nonempty.to_subtype ne_I
-  let sl (i : I) : Set s := Subtype.val ⁻¹' (LeSublevelOn s (f i) b)
-  have e_csl' (i) : ∃ t : Set E, IsClosed t ∧ sl i = s ∩ t := by
-    specialize hfi i.val i.prop
-    rw [lowerSemicontinuousOn_iff_preimage_Iic] at hfi
-    obtain ⟨v, v_closed, hv⟩ := hfi b
-    use v, v_closed
-    simp [← hv, sl, leSublevelOn_eq_inter]
-  let sl' (i) := (e_csl' i).choose
-  have closed_sl' (i) : IsClosed (sl' i) := (e_csl' i).choose_spec.1
-  have inter_sl' (i) : sl i = s ∩ sl' i := (e_csl' i).choose_spec.2
-  have : ⋂ i ∈ I, LeSublevelOn s (f i) b = ∅ ↔ s ∩ ⋂ i, sl' i = ∅ := by
-    rw [Set.inter_iInter s]
-    simp_rw [← inter_sl', sl]
-    simp only [Subtype.image_preimage_coe, iInter_coe_set]
-    nth_rewrite 2 [Set.biInter_eq_iInter]
-    rw [← Set.inter_iInter s, Set.inter_eq_self_of_subset_right, Set.biInter_eq_iInter]
-    apply subset_trans Set.iInter_subset_iUnion
-    simp [leSublevelOn_subset]
-  rw [this]
   constructor
   · intro H
-    obtain ⟨u, hu⟩ := IsCompact.elim_finite_subfamily_closed ks sl' closed_sl' H
-    use u
-    rw [Set.ext_iff] at hu
-    intro x hx
-    specialize hu x
-    simp [hx] at hu
-    obtain ⟨i, hi, hi', hi''⟩ := hu
-    refine ⟨⟨i, hi⟩, hi', ?_⟩
-    replace hi'' : x ∉ s ∩ sl' ⟨i, hi⟩ := by simpa [hx] using hi''
-    simpa [sl, ← inter_sl', hx, mem_leSublevelOn_iff] using hi''
+    apply ks.induction_on
+      (p := fun s ↦ ∃ u : Finset I, ∀ x ∈ s, ∃ i ∈ u, b < f i x)
+    · use ∅, by simp
+    · rintro s t hst ⟨u, hu⟩
+      use u, fun x a ↦ hu x (hst a)
+    · classical
+      rintro s t ⟨u, hu⟩ ⟨v, hv⟩
+      use u ∪ v
+      rintro x (hx | hx)
+      · obtain ⟨i, hi, hx⟩ := hu x hx
+        use i, Finset.mem_union_left v hi, hx
+      · obtain ⟨i, hi, hx⟩ := hv x hx
+        use i, Finset.mem_union_right u hi, hx
+    · intro x hx
+      simp only [eq_empty_iff_forall_notMem] at H
+      specialize H x
+      simp only [mem_iInter, not_forall, Classical.not_imp] at H
+      obtain ⟨i, hi, H⟩ := H
+      simp only [mem_leSublevelOn_iff, hx, true_and, not_le] at H
+      specialize hfi i hi x hx b H
+      simp only [Filter.Eventually] at hfi
+      use {x | b < f i x}, hfi, {⟨i, hi⟩}
+      intro x hx
+      use ⟨i, hi⟩, by simp, hx
   · rintro ⟨u, hu⟩
     apply Set.eq_empty_of_forall_notMem
-    intro x
-    by_cases hx : x ∈ s
-    · simp_rw [inter_iInter, ← inter_sl']
-      simp only [Subtype.image_preimage_coe, iInter_coe_set, mem_iInter, mem_inter_iff, hx,
-        mem_leSublevelOn_iff, true_and, not_forall, Classical.not_imp, not_le, sl]
-      obtain ⟨i, hi, hi'⟩ := hu x hx
-      exact ⟨i, i.prop, hi'⟩
-    · exact fun hx' ↦ hx (mem_of_mem_inter_left hx')
+    intro x hx
+    simp only [mem_iInter, mem_leSublevelOn_iff] at hx
+    have hxs : x ∈ s := by
+      obtain ⟨i , hi⟩ := ne_I
+      exact (hx i hi).1
+    obtain ⟨i, hiu, hv⟩ := hu x hxs
+    apply lt_irrefl b (lt_of_lt_of_le hv (hx i i.prop).2)
 
-
--- We need a better elimination theorem for intersections in a compact subset
--- which are closed in the compact subset and not necessarily in the ambient space
+/-- Variant of `LowerSemicontinuousOn.inter_leSubleveOn_empty_iff_exists_finset_inter` where `s` is assumed to be nonempty. -/
 theorem inter_leSublevelOn_empty_iff_exists_finset_inter' {ι : Type*} {f : ι → E → β} {I : Set ι}
     (ne_s : s.Nonempty)
     [TopologicalSpace E] (ks : IsCompact s)
@@ -176,68 +167,78 @@ theorem IsCompact.elim_finite_subfamily_closedOn {X : Type*} [TopologicalSpace X
     (htc : ∀ (i : ι), IsClosed (Subtype.val ⁻¹' (t i) : Set s))
     (hst : s ∩ ⋂ i, t i = ∅) :
     ∃ u : Finset ι, s ∩ ⋂ i ∈ u, t i = ∅  := by
-  sorry
+  have et' (i : ι) : ∃ f : Set X, IsClosed f ∧ s ∩ f = s ∩ t i := by
+    obtain ⟨f, hf, hf'⟩ := Topology.IsInducing.subtypeVal.isClosed_iff.mp (htc i)
+    rw [Subtype.preimage_coe_eq_preimage_coe_iff] at hf'
+    refine ⟨f, hf, hf'⟩
+  let t' (i) := (et' i).choose
+  have ht' (i) : IsClosed (t' i) := (et' i).choose_spec.1
+  have ht's (i) : s ∩ t' i = s ∩ t i := (et' i).choose_spec.2
+  suffices s ∩ ⋂ i, t' i = ∅ by
+    obtain ⟨u, hu⟩ := IsCompact.elim_finite_subfamily_closed hs t' ht' this
+    use u
+    rcases (u : Set ι).eq_empty_or_nonempty with hu_e | hu_ne
+    · simp only [Finset.coe_eq_empty] at hu_e
+      simpa only [hu_e, Finset.notMem_empty, iInter_of_empty, iInter_univ, inter_univ] using hu
+    simp_rw [← Finset.mem_coe] at hu ⊢
+    rw [← Set.inter_biInter] at hu ⊢
+    rw [← hu]
+    apply Set.iInter₂_congr
+    simp [ht's]
+    trivial
+    trivial
+  rcases isEmpty_or_nonempty ι with hι | hι
+  · simpa [hι] using hst
+  · simp_rw [Set.inter_iInter, ht's, ← Set.inter_iInter]
+    exact hst
 
 
--- We need a better elimination theorem for intersections in a compact subset
--- which are closed in the compact subset and not necessarily in the ambient space
-theorem inter_leSublevelOn_empty_iff_exists_finset_inter_var {ι : Type*} {f : ι → E → β} {I : Set ι}
+example
+    {ι : Type*} {f : ι → E → β} {I : Set ι}
     (ne_I : I.Nonempty) [TopologicalSpace E] (ks : IsCompact s)
     (hfi : ∀ i ∈ I, LowerSemicontinuousOn (f i) s) :
     ⋂ i ∈ I, LeSublevelOn s (f i) b = ∅ ↔
       ∃ u : Finset I, ∀ x ∈ s, ∃ i ∈ u, b < f i x := by
-  have := IsCompact.elim_finite_subfamily_closedOn ks (fun i ↦ LeSublevel (f i) b) ?_
-  · sorry
-  · intro i
-
-
   have : Nonempty I := Nonempty.to_subtype ne_I
-  let sl (i : I) : Set s := Subtype.val ⁻¹' (LeSublevelOn s (f i) b)
-  have e_csl' (i) : ∃ t : Set E, IsClosed t ∧ sl i = s ∩ t := by
-    specialize hfi i.val i.prop
-    rw [lowerSemicontinuousOn_iff_preimage_Iic] at hfi
-    obtain ⟨v, v_closed, hv⟩ := hfi b
-    use v, v_closed
-    simp [← hv, sl, leSublevelOn_eq_inter]
-  let sl' (i) := (e_csl' i).choose
-  have closed_sl' (i) : IsClosed (sl' i) := (e_csl' i).choose_spec.1
-  have inter_sl' (i) : sl i = s ∩ sl' i := (e_csl' i).choose_spec.2
-  have : ⋂ i ∈ I, LeSublevelOn s (f i) b = ∅ ↔ s ∩ ⋂ i, sl' i = ∅ := by
-    rw [Set.inter_iInter s]
-    simp_rw [← inter_sl', sl]
-    simp only [Subtype.image_preimage_coe, iInter_coe_set]
-    nth_rewrite 2 [Set.biInter_eq_iInter]
-    rw [← Set.inter_iInter s, Set.inter_eq_self_of_subset_right, Set.biInter_eq_iInter]
-    apply subset_trans Set.iInter_subset_iUnion
-    simp [leSublevelOn_subset]
-  rw [this]
   constructor
   · intro H
-    obtain ⟨u, hu⟩ := IsCompact.elim_finite_subfamily_closed ks sl' closed_sl' H
+    obtain ⟨u, hu⟩ := IsCompact.elim_finite_subfamily_closedOn ks
+      (fun (i : I) ↦ LeSublevelOn s (f i) b)
+      (fun i ↦ by
+        specialize hfi i i.prop
+        rw [lowerSemicontinuousOn_iff_preimage_Iic] at hfi
+        obtain ⟨v, hv, hv'⟩ := hfi b
+        rw [Topology.IsInducing.subtypeVal.isClosed_iff]
+        use v, hv
+        rw [Subtype.preimage_coe_eq_preimage_coe_iff, ← hv']
+        ext
+        simp [LeSublevelOn])
+      (by
+        rw [Set.eq_empty_iff_forall_notMem] at H ⊢
+        rintro x ⟨hx, hxb⟩
+        simp only [iInter_coe_set, mem_iInter] at hxb
+        simp only [mem_iInter, not_forall, Classical.not_imp] at H
+        obtain ⟨i, hi, hxi⟩ := H x
+        exact hxi (hxb i hi))
     use u
-    rw [Set.ext_iff] at hu
+    rw [Set.eq_empty_iff_forall_notMem] at hu
     intro x hx
     specialize hu x
-    simp [hx] at hu
-    obtain ⟨i, hi, hi', hi''⟩ := hu
-    refine ⟨⟨i, hi⟩, hi', ?_⟩
-    replace hi'' : x ∉ s ∩ sl' ⟨i, hi⟩ := by simpa [hx] using hi''
-    simpa [sl, ← inter_sl', hx, mem_leSublevelOn_iff] using hi''
+    simp only [iInter_coe_set, mem_inter_iff, hx, mem_iInter, true_and, not_forall,
+      Classical.not_imp, exists_and_right] at hu
+    obtain ⟨i, hiI, hiu, hib⟩ := hu
+    refine ⟨⟨i, hiI⟩, hiu, ?_⟩
+    simp only [mem_leSublevelOn_iff, not_and, not_le] at hib
+    exact hib hx
   · rintro ⟨u, hu⟩
     apply Set.eq_empty_of_forall_notMem
-    intro x
-    by_cases hx : x ∈ s
-    · simp_rw [inter_iInter, ← inter_sl']
-      simp only [Subtype.image_preimage_coe, iInter_coe_set, mem_iInter, mem_inter_iff, hx,
-        mem_leSublevelOn_iff, true_and, not_forall, Classical.not_imp, not_le, sl]
-      obtain ⟨i, hi, hi'⟩ := hu x hx
-      exact ⟨i, i.prop, hi'⟩
-    · exact fun hx' ↦ hx (mem_of_mem_inter_left hx')
-
-
-
-
-
+    intro x hx
+    simp only [mem_iInter, mem_leSublevelOn_iff] at hx
+    have hxs : x ∈ s := by
+      obtain ⟨i , hi⟩ := ne_I
+      exact (hx i hi).1
+    obtain ⟨i, hiu, hv⟩ := hu x hxs
+    apply lt_irrefl b (lt_of_lt_of_le hv (hx i i.prop).2)
 
 
 end LinearOrder
