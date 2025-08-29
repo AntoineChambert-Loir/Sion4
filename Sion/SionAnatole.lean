@@ -314,7 +314,7 @@ theorem lemma1' {y₁ y₂ : F} (y₁_in : y₁ ∈ Y) (y₂_in : y₂ ∈ Y) {a
     (hfy y₁ y₁_in |>.sup <| hfy y₂ y₂_in).exists_forall_le_of_isCompact ne_X kX
   use x, x_in
   -- refine forall_lt_le_iff_le.mp fun b hab ↦ ?_
-  have (b) (hab : a < b) : f x y₁ ⊔ f x y₂ ≤ b := by 
+  have (b) (hab : a < b) : f x y₁ ⊔ f x y₂ ≤ b := by
     rcases lemma0 cY hfx hfx' hfy hfy' y₁_in y₂_in hab H with ⟨x', x'_in, hx'⟩
     exact (hx x'_in).trans hx'
   sorry

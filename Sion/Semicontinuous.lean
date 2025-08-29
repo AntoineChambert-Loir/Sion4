@@ -593,10 +593,44 @@ theorem upperSemicontinuousOn_iSup₂_of_isProper
     UpperSemicontinuousOn (fun z ↦ ⨆ x ∈ g ⁻¹' {z}, f x) (range g) :=
   lowerSemicontinuousOn_iInf₂_of_isProper (β := βᵒᵈ) hg hf
 
+-- Deuxième approche
+
+-- bad name
+lemma _root_.IsClosedMap.frequently_fiber {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {f : α → β}
+    (hf : IsClosedMap f) (p : α → Prop) (y₀ : β) :
+    (∃ᶠ y in 𝓝 y₀, ∃ x, f x = y ∧ p x) → (∃ x₀, f x₀ = y₀ ∧ ∃ᶠ x in 𝓝 x₀, p x) := by
+  rw [isClosedMap_iff_clusterPt] at hf
+  specialize hf {x | p x} y₀
+  simp_rw [MapClusterPt, map_principal, clusterPt_principal_iff_frequently, mem_image, and_comm] at hf
+  exact hf
+
+lemma _root_.IsClosedMap.eventually_fiber {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {f : α → β}
+    (hf : IsClosedMap f) (p : α → Prop) (y₀ : β) :
+    (∀ x₀, f x₀ = y₀ → ∀ᶠ x in 𝓝 x₀, p x) → (∀ᶠ y in 𝓝 y₀, ∀ x, f x = y → p x) := by
+  contrapose!
+  simpa using hf.frequently_fiber (fun x ↦ ¬p x) y₀
+
+theorem lowerSemicontinuousOn_iInf₂_of_isProper'
+    {f : α → β}
+    {γ : Type*} [TopologicalSpace γ] {g : α → γ} (hg : IsProperMap g)
+    (hf : LowerSemicontinuous f) :
+    LowerSemicontinuousOn (fun z ↦ ⨅ x ∈ g ⁻¹' {z}, f x) (range g) := by
+  intro z₀ hz₀ b hb
+  rw [eventually_nhdsWithin_iff]
+  have : ∀ x₀ ∈ g ⁻¹' {z₀}, ∀ᶠ x in 𝓝 x₀, b < f x := by
+    intro x₀ hx₀
+    have : b < f x₀ := hb.trans_le (iInf₂_le _ hx₀)
+    exact hf _ _ this
+  have := hg.isClosedMap.eventually_fiber _ _ this
+  filter_upwards [this] with z hz z_mem
+  rcases hf.lowerSemicontinuousOn _ |>.exists_isMinOn
+    (preimage_singleton_nonempty.mpr z_mem) (hg.isCompact_preimage isCompact_singleton)
+    with ⟨x, hxz, x_min⟩
+  rw [← iInf_subtype'', x_min.iInf_eq hxz]
+  exact hz x hxz
+
 end LowerSemicontinuous
 
 end CompleteLinearOrder
 
 end Semicontinuity
-
-
