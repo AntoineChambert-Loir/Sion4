@@ -8,6 +8,7 @@ import Sion.ForMathlib.Misc
 import Sion.SaddlePoint
 import Sion.Semicontinuous
 import Sion.SubLevelset
+import Mathlib.Topology.Algebra.Module.LinearMap
 
 /-! # Formalization of the von Neumann Sion theorem
 
@@ -624,26 +625,6 @@ theorem exists_isSaddlePointOn :
   exact hab x hx y hy
 
 end Real
-
-section vonNeumann
-
-variable {E F : Type*}
-variable {X : Set E} {Y : Set F}
-variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
-    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E] [Module.Finite ℝ E]
-    (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
-
-variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F] [Module.Finite ℝ E]
-  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
-  (cY : Convex ℝ Y) (ne_Y : Y.Nonempty) (kY : IsCompact Y)
-
-variable {f : E →ₗ[ℝ] F →ₗ[ℝ] ℝ}
-    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E ↦ f x y) X)
-    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
-  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
-  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
-
-end vonNeumann
 
 end Sion
 
