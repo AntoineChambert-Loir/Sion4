@@ -586,6 +586,52 @@ theorem exists_saddlePointOn' :
 
 end CompleteLinearOrder
 
+section DedekindMacNeille
+
+variable {E F β γ : Type*} [LinearOrder β]
+
+variable {X : Set E} {Y : Set F} {f : E → F → β}
+variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
+    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
+    (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
+    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E ↦ f x y) X)
+    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
+
+variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
+  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
+  (cY : Convex ℝ Y) (ne_Y : Y.Nonempty) (kY : IsCompact Y)
+  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
+  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
+
+-- The following lines assume that γ is the Dedekind MacNeille completion of β
+variable [TopologicalSpace β] [OrderTopology β]
+variable {γ : Type*} [CompleteLinearOrder γ] [DenselyOrdered γ]
+  [TopologicalSpace γ] [OrderTopology γ]
+  {ι : β ↪o γ} (hι : Continuous ι)
+
+include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' hι in
+/-- The minimax theorem, in the saddle point form, when `β` is given a Dedekind-MacNeille completion `ι : β ↪o γ` -/
+theorem DMCompletion.exists_isSaddlePointOn :
+  ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
+  -- Reduce to the cae of EReal-valued functions
+  let φ : E → F → γ := fun x y ↦  ι (f x y)
+  -- suffices : ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y φ a b
+  have hφx (x) (hx : x ∈ X) : UpperSemicontinuousOn (fun y ↦ φ x y) Y := by
+    convert Continuous.comp_upperSemicontinuousOn hι (hfx x hx) ι.monotone
+  have hφx' (x) (hx : x ∈ X) : QuasiconcaveOn ℝ Y fun y ↦ φ x y := by
+    convert (hfx' x hx).monotone_comp ι.monotone
+  have hφy (y) (hy : y ∈ Y) : LowerSemicontinuousOn (fun x ↦ φ x y) X := by
+    convert Continuous.comp_lowerSemicontinuousOn hι (hfy y hy) ι.monotone
+  have hφy' (y) (hy : y ∈ Y) : QuasiconvexOn ℝ X fun x ↦ φ x y := by
+    convert (hfy' y hy).monotone_comp ι.monotone
+  obtain ⟨a, ha, b, hb, hab⟩ :=
+    exists_isSaddlePointOn' ne_X kX hφy hφy' cY kY hφx hφx' cX ne_Y
+  use a, ha, b, hb
+  intro x hx y hy
+  simpa only [OrderEmbedding.le_iff_le, φ] using hab x hx y hy
+
+end DedekindMacNeille
+
 section Real
 
 variable {E F : Type*}
@@ -602,27 +648,17 @@ variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F]
   (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
   (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
 
+def EReal.orderEmbedding : ℝ ↪o EReal where
+  toFun := Real.toEReal
+  inj' := EReal.coe_injective
+  map_rel_iff' {x y} := by simp
+
 include ne_X ne_Y cX cY kX kY hfx hfx' hfy hfy' in
 /-- The minimax theorem, in the saddle point form -/
 theorem exists_isSaddlePointOn :
-  ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
-  -- Reduce to the cae of EReal-valued functions
-  let φ : E → F → EReal := fun x y ↦ (f x y).toEReal
-  -- suffices : ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y φ a b
-  have hφx (x) (hx : x ∈ X) : UpperSemicontinuousOn (fun y ↦ φ x y) Y := by
-    convert Continuous.comp_upperSemicontinuousOn continuous_coe_real_ereal (hfx x hx) EReal.coe_strictMono.monotone
-  have hφx' (x) (hx : x ∈ X) : QuasiconcaveOn ℝ Y fun y ↦ φ x y := by
-    convert (hfx' x hx).monotone_comp EReal.coe_strictMono.monotone
-  have hφy (y) (hy : y ∈ Y) : LowerSemicontinuousOn (fun x ↦ φ x y) X := by
-    convert Continuous.comp_lowerSemicontinuousOn continuous_coe_real_ereal (hfy y hy) EReal.coe_strictMono.monotone
-  have hφy' (y) (hy : y ∈ Y) : QuasiconvexOn ℝ X fun x ↦ φ x y := by
-    convert (hfy' y hy).monotone_comp EReal.coe_strictMono.monotone
-  obtain ⟨a, ha, b, hb, hab⟩ :=
-    exists_isSaddlePointOn' ne_X kX hφy hφy' cY kY hφx hφx' cX ne_Y
-  use a, ha, b, hb
-  intro x hx y hy
-  simp only [← EReal.coe_le_coe_iff]
-  exact hab x hx y hy
+    ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b :=
+  DMCompletion.exists_isSaddlePointOn ne_X cX kX hfy hfy' cY ne_Y kY hfx hfx'
+    (ι := EReal.orderEmbedding) (hι := continuous_coe_real_ereal)
 
 end Real
 
