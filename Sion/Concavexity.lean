@@ -91,12 +91,6 @@ end Restriction
 section Quasiconcave
 
 
-/- We prove that a lsc quasiconcave function on a nonempty compact convex set
-is bounded above and attains its upper bound.
-
-Maybe the result is false, I don't know.
-
--/
 variable {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E] [IsTopologicalAddGroup E]
   [ContinuousSMul ℝ E]
 
@@ -123,6 +117,13 @@ theorem QuasiconvexOn.isPreconnected_preimage {s : Set E} {t : β}
   exact (hfc t).isPreconnected
 
 #exit
+
+/- We prove that a lsc quasiconcave function on a nonempty compact convex set
+is bounded above and attains its upper bound.
+
+Maybe the result is false, I don't know.
+
+-/
 
 -- La suite est peut-être fausse et est de toutes façons inutile
 

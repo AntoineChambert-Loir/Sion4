@@ -27,11 +27,17 @@ def IsSaddlePointOn  [Preorder β] (a : E) (b : F) : Prop :=
   ∀ x ∈ X, ∀ y ∈ Y, f a y ≤ f x b
 
 variable {X Y f}
+
+lemma IsSaddlePointOn.swap [Preorder β] {a a' : E} {b b' : F} (ha' : a' ∈ X) (hb : b ∈ Y)
+    (h : IsSaddlePointOn X Y f a b) (h' : IsSaddlePointOn X Y f a' b') :
+    IsSaddlePointOn X Y f a b' := fun x hx y hy ↦
+  le_trans (h a' ha' y hy) (h' x hx b hb)
+
 -- [Hiriart-Urruty, (4.1.1)]
 lemma isSaddlePointOn_iff [CompleteLinearOrder β]
     {a : E} (ha : a ∈ X) {b : F} (hb : b ∈ Y) :
-  IsSaddlePointOn X Y f a b ↔
-  ⨆ y ∈ Y, f a y = f a b ∧  ⨅ x ∈ X, f x b = f a b := by
+    IsSaddlePointOn X Y f a b ↔
+      ⨆ y ∈ Y, f a y = f a b ∧  ⨅ x ∈ X, f x b = f a b := by
   constructor
   · intro h
     constructor
@@ -56,8 +62,8 @@ lemma isSaddlePointOn_iff [CompleteLinearOrder β]
 -- [Hiriart-Urruty, Prop. 4.2.2]
 lemma isSaddlePointOn_iff' [CompleteLinearOrder β]
     {a : E} (ha : a ∈ X) {b : F} (hb : b ∈ Y) :
-  IsSaddlePointOn X Y f a b ↔
-    ((⨆ y ∈ Y, f a y) ≤ (⨅ x ∈ X, f x b)) := by
+    IsSaddlePointOn X Y f a b ↔
+      ((⨆ y ∈ Y, f a y) ≤ (⨅ x ∈ X, f x b)) := by
   rw [isSaddlePointOn_iff ha hb]
   constructor
   · rintro ⟨h, h'⟩

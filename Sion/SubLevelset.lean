@@ -175,7 +175,7 @@ fun _ _ hbc _ hb ↦ le_trans hbc hb
 
 theorem antitone_leOverlevelOn :
     Antitone (fun b ↦ A.LeOverlevelOn f b) :=
-  fun _ _ hbc a ⟨ha, hb⟩ ↦ ⟨ha, le_trans hbc hb⟩
+  fun _ _ hbc a ⟨ha, hb⟩ ↦ ⟨ha, by apply le_trans hbc hb⟩
 
 theorem monotone_ltSublevel :
     Monotone (fun b ↦ LtSublevel f b) :=
@@ -191,7 +191,7 @@ theorem antitone_ltOverlevel :
 
 theorem antitone_ltOverlevelOn :
     Antitone (fun b ↦ A.LtOverlevelOn f b) :=
-  fun _ _ hbc _ ⟨ha, hb⟩ ↦ ⟨ha, lt_of_le_of_lt hbc hb⟩
+  fun _ _ hbc _ ⟨ha, hb⟩ ↦ ⟨ha, by apply lt_of_le_of_lt hbc hb⟩
 
 end Preorder
 
@@ -213,7 +213,7 @@ theorem leOverlevel_empty_iff :
 
 theorem leOverlevelOn_empty_iff :
     LeOverlevelOn A f b = ∅ ↔ ∀ x ∈ A, f x < b := by
-  simp [LeOverlevelOn]
+  apply leSublevelOn_empty_iff
 
 theorem inter_leSublevelOn_empty_iff {ι : Type*} {f : ι → α → β} {I : Set ι} (ne_A : A.Nonempty) :
     ⋂ i ∈ I, LeSublevelOn A (f i) b = ∅ ↔ ∀ x ∈ A, ∃ i ∈ I, b < f i x := by
@@ -251,7 +251,7 @@ theorem ltOverlevel_empty_iff :
 
 theorem ltOverlevelOn_empty_iff :
     LtOverlevelOn A f b = ∅ ↔ ∀ x ∈ A, f x ≤ b := by
-  simp [LtOverlevelOn]
+  apply ltSublevelOn_empty_iff
 
 theorem inter_ltSublevelOn_empty_iff {ι : Type*} {f : ι → α → β} {I : Set ι} (ne_A : A.Nonempty) :
     ⋂ i ∈ I, LtSublevelOn A (f i) b = ∅ ↔ ∀ x ∈ A, ∃ i ∈ I, b ≤ f i x := by
@@ -311,7 +311,8 @@ theorem open_val_preimage_ltSublevelOn_iff :
     (∀ b, IsOpen (Subtype.val ⁻¹' (LtSublevelOn A f b) : Set A)) ↔ UpperSemicontinuousOn f A := by
   rw [upperSemicontinuousOn_iff_restrict,
     ← open_ltSublevel_iff]
-  simp_rw [← ltSublevelOn_eq_coe_val_preimage]
+  sorry
+  -- simp_rw [← ltSublevelOn_eq_coe_val_preimage]
 
 theorem isOpen_ltSublevelOn_iff (hA : IsOpen A) :
     (∀ b, IsOpen (LtSublevelOn A f b)) ↔ UpperSemicontinuousOn f A := by

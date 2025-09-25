@@ -7,8 +7,7 @@ import Sion.Concavexity
 import Sion.ForMathlib.Misc
 import Sion.SaddlePoint
 import Sion.Semicontinuous
-import Sion.Semicontinuous
-import Sion.Sublevel
+import Sion.SubLevelset
 
 /-! # Formalization of the von Neumann Sion theorem
 
@@ -372,7 +371,7 @@ theorem exists_lt_iInf_of_lt_iInf_of_finite
       use b, hb
     -- the nonempty case
     have hX'X : X' ⊆ X := leSublevelOn_subset
-    have kX' : IsCompact X' := isCompact_leSublevelOn (hfy b hb) kX
+    have kX' : IsCompact X' := isCompact_leSublevelOn _ _ _ (hfy b hb) kX
     have cX' : Convex ℝ X' := hfy' b hb t
     specialize hrec X'_ne kX'
       (fun y hy ↦ LowerSemicontinuousOn.mono (hfy y hy) hX'X)
@@ -447,7 +446,7 @@ theorem minimax
   rw [← forall_lt_iff_le]
   intro t ht
   have : ⋂ y ∈ Y, LeSublevelOn X (fun x ↦ f x y) t = ∅ := by
-    rw [inter_leSublevelOn_empty_iff ne_Y]
+    rw [inter_leSublevelOn_empty_iff _ _ ne_X]
     intro x hx
     by_contra! H
     rw [lt_isGLB_iff hinf_sup] at ht
@@ -456,7 +455,7 @@ theorem minimax
     specialize hc x hx
     apply not_le.mpr  htc (le_trans hc _)
     simpa [isLUB_le_iff (hsup_y x hx), mem_upperBounds] using H
-  rw [inter_leSublevelOn_empty_iff_exists_finset_inter ne_Y kX hfy] at this
+  rw [inter_leSublevelOn_empty_iff_exists_finset_inter t ne_Y kX hfy] at this
   obtain ⟨s, hs⟩ := this
   have hs' (x) (hx : x ∈ X) :
       ∃ y ∈ Subtype.val '' (s : Set Y), t < f x y := by
@@ -540,7 +539,7 @@ theorem minimax' : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X,
   rw [← forall_lt_iff_le]
   intro t ht
   have : ⋂ y ∈ Y, LeSublevelOn X (fun x ↦ f x y) t = ∅ := by
-    rw [inter_leSublevelOn_empty_iff ne_Y]
+    rw [inter_leSublevelOn_empty_iff _ _ ne_X]
     intro x hx
     by_contra! H
     rw [lt_iInf_iff] at ht
@@ -549,7 +548,7 @@ theorem minimax' : (⨅ x ∈ X, ⨆ y ∈ Y, f x y) = ⨆ y ∈ Y, ⨅ x ∈ X,
     simp only [le_iInf_iff] at hc
     apply le_trans (hc x hx)
     simpa only [iSup_le_iff]
-  rw [inter_leSublevelOn_empty_iff_exists_finset_inter ne_Y kX hfy] at this
+  rw [inter_leSublevelOn_empty_iff_exists_finset_inter t ne_Y kX hfy] at this
   obtain ⟨s, hs⟩ := this
   have hs' (x) (hx : x ∈ X) :
       ∃ y ∈ Subtype.val '' (s : Set Y), t < f x y := by
@@ -575,14 +574,12 @@ theorem exists_saddlePointOn' :
     ∃ a ∈ X, ∃ b ∈ Y, IsSaddlePointOn X Y f a b := by
   have hlsc : LowerSemicontinuousOn (fun x => ⨆ y ∈ Y, f x y) X := by
     intro x hx
-    apply lowerSemicontinuousWithinAt_iSup₂ ne_Y kY _ (hfx x hx)
+    apply lowerSemicontinuousWithinAt_iSup₂ -- ne_Y kY _ (hfx x hx)
     intro y hy; exact hfy y hy x hx
-  have husc : UpperSemicontinuousOn (fun y => ⨅ x ∈ X, f x y) Y := by
-    intro y hy
-    apply upperSemicontinuousWithinAt_iInf₂ ne_X kX _ (hfy y hy)
-    intro x hx; exact hfx x hx y hy
-  obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf_of_isCompact ne_X kX hlsc
-  obtain ⟨b, hb, hb'⟩ := UpperSemicontinuousOn.exists_iSup_of_isCompact ne_Y kY husc
+  have husc : UpperSemicontinuousOn (fun y => ⨅ x ∈ X, f x y) Y := fun y hy ↦
+    upperSemicontinuousWithinAt_iInf₂ fun x hx ↦ hfx x hx y hy
+  obtain ⟨a, ha, ha'⟩ := LowerSemicontinuousOn.exists_iInf₂_of_isCompact ne_X kX hlsc
+  obtain ⟨b, hb, hb'⟩ := UpperSemicontinuousOn.exists_iSup₂_of_isCompact ne_Y kY husc
   use a, ha, b, hb
   rw [isSaddlePointOn_iff' ha hb, ha', minimax' ne_X cX kX hfy hfy' cY hfx hfx', ← hb']
 
@@ -627,6 +624,26 @@ theorem exists_isSaddlePointOn :
   exact hab x hx y hy
 
 end Real
+
+section vonNeumann
+
+variable {E F : Type*}
+variable {X : Set E} {Y : Set F}
+variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
+    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E] [Module.Finite ℝ E]
+    (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
+
+variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F] [Module.Finite ℝ E]
+  [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
+  (cY : Convex ℝ Y) (ne_Y : Y.Nonempty) (kY : IsCompact Y)
+
+variable {f : E →ₗ[ℝ] F →ₗ[ℝ] ℝ}
+    (hfy : ∀ y ∈ Y, LowerSemicontinuousOn (fun x : E ↦ f x y) X)
+    (hfy' : ∀ y ∈ Y, QuasiconvexOn ℝ X fun x => f x y)
+  (hfx : ∀ x ∈ X, UpperSemicontinuousOn (fun y : F => f x y) Y)
+  (hfx' : ∀ x ∈ X, QuasiconcaveOn ℝ Y fun y => f x y)
+
+end vonNeumann
 
 end Sion
 
