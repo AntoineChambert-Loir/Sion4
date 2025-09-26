@@ -1,14 +1,16 @@
 import Sion.Sion
+import Mathlib.Topology.Algebra.Module.FiniteDimension
+import Mathlib.Topology.Algebra.Module.StrongTopology
 
 section vonNeumann
 
 variable {E F : Type*}
 variable {X : Set E} {Y : Set F}
-variable [TopologicalSpace E] [AddCommGroup E] [Module ℝ E]
-    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E] [Module.Finite ℝ E]
+variable [TopologicalSpace E] [T2Space E] [AddCommGroup E] [Module ℝ E]
+    [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
     (ne_X : X.Nonempty) (cX : Convex ℝ X) (kX : IsCompact X)
 
-variable [TopologicalSpace F] [AddCommGroup F] [Module ℝ F] [Module.Finite ℝ E]
+variable [TopologicalSpace F] [T2Space F] [AddCommGroup F] [Module ℝ F]
   [IsTopologicalAddGroup F] [ContinuousSMul ℝ F]
   (cY : Convex ℝ Y) (ne_Y : Y.Nonempty) (kY : IsCompact Y)
 
@@ -23,6 +25,24 @@ example (x : E) :
   apply Continuous.continuousOn
   exact ContinuousLinearMap.continuous (f x)
 
+def ContinuousLinearMap.eval (x : E) : (E →L[ℝ] F) →L[ℝ] F where
+  toFun f := f x
+  map_add' f g := by simp
+  map_smul' r f := by simp
+  cont := continuous_eval_const x
+
+noncomputable def linearMap₂_to_continuousLinearMap₂Equiv
+    [Module.Finite ℝ F] [Module.Finite ℝ E] :
+    (E →ₗ[ℝ] F →ₗ[ℝ] ℝ) ≃ (E →L[ℝ] F →L[ℝ] ℝ) where
+  toFun f := ⟨{
+    toFun x := (f x).toContinuousLinearMap
+    map_add' := by simp
+    map_smul' := by simp},
+    LinearMap.continuous_of_finiteDimensional _⟩
+  invFun f := f.toLinearMap₂
+  left_inv f := rfl
+  right_inv f := rfl
+
 noncomputable example : F →L[ℝ] E →L[ℝ] ℝ where
   toFun y := {
     toFun x := f x y
@@ -34,10 +54,11 @@ noncomputable example : F →L[ℝ] E →L[ℝ] ℝ where
   map_add' y y' := by aesop
   map_smul' r y := by aesop
   cont := by
-    apply?
+    sorry
 
 example : TopologicalSpace (E →L[ℝ] ℝ) := by
   exact ContinuousLinearMap.topologicalSpace
+
 example (y : F) :
     ContinuousOn (fun x : E ↦ f x y) X := by
   apply Continuous.continuousOn
